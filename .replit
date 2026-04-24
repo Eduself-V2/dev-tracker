@@ -11,6 +11,26 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "MySQL"
+
+[[workflows.workflow]]
+name = "MySQL"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash .local/mysql/start.sh"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
@@ -31,3 +51,10 @@ externalPort = 80
 [[ports]]
 localPort = 18810
 externalPort = 3000
+
+[[ports]]
+localPort = 22462
+externalPort = 3002
+
+[nix]
+channel = "stable-25_05"

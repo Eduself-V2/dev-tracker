@@ -14,6 +14,14 @@ tags:
     description: Task CRUD operations
   - name: stats
     description: Dashboard statistics
+  - name: tracker-auth
+    description: Dev Tracker session authentication
+  - name: tracker-users
+    description: Dev Tracker user administration
+  - name: tracker-requirements
+    description: Dev Tracker requirement workflow
+  - name: tracker-stats
+    description: Dev Tracker dashboard
 paths:
   /healthz:
     get:
@@ -176,6 +184,263 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Task"
+  /tracker/auth/login:
+    post:
+      operationId: trackerLogin
+      tags: [tracker-auth]
+      summary: Login with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrackerLogin"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackerUser"
+  /tracker/auth/logout:
+    post:
+      operationId: trackerLogout
+      tags: [tracker-auth]
+      summary: Logout the current session
+      responses:
+        "204":
+          description: Logged out
+  /tracker/auth/me:
+    get:
+      operationId: trackerMe
+      tags: [tracker-auth]
+      summary: Get the current logged in user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackerUser"
+  /tracker/users:
+    get:
+      operationId: trackerListUsers
+      tags: [tracker-users]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrackerUser"
+    post:
+      operationId: trackerCreateUser
+      tags: [tracker-users]
+      summary: Create a new user (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTrackerUser"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackerUser"
+  /tracker/users/{id}:
+    patch:
+      operationId: trackerUpdateUser
+      tags: [tracker-users]
+      summary: Update a user (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTrackerUser"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackerUser"
+    delete:
+      operationId: trackerDeleteUser
+      tags: [tracker-users]
+      summary: Delete a user (admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+  /tracker/requirements:
+    get:
+      operationId: trackerListRequirements
+      tags: [tracker-requirements]
+      summary: List requirements (filtered by status, search, assignee)
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [all, open, in_testing, needs_fix, confirmed, pushed_to_production]
+            default: all
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: mine
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Matching requirements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Requirement"
+    post:
+      operationId: trackerCreateRequirement
+      tags: [tracker-requirements]
+      summary: Create a requirement (developer/admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequirement"
+      responses:
+        "201":
+          description: Created requirement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Requirement"
+  /tracker/requirements/{id}:
+    get:
+      operationId: trackerGetRequirement
+      tags: [tracker-requirements]
+      summary: Get a requirement with its events and comments
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Requirement detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequirementDetail"
+    patch:
+      operationId: trackerUpdateRequirement
+      tags: [tracker-requirements]
+      summary: Update a requirement (developer/admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRequirement"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Requirement"
+  /tracker/requirements/{id}/transition:
+    post:
+      operationId: trackerTransitionRequirement
+      tags: [tracker-requirements]
+      summary: Move requirement to a new stage
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequirement"
+      responses:
+        "200":
+          description: Updated requirement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequirementDetail"
+  /tracker/requirements/{id}/comments:
+    post:
+      operationId: trackerAddComment
+      tags: [tracker-requirements]
+      summary: Add a comment to a requirement
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateComment"
+      responses:
+        "201":
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequirementComment"
+  /tracker/stats/summary:
+    get:
+      operationId: trackerStatsSummary
+      tags: [tracker-stats]
+      summary: Tracker dashboard summary
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackerStatsSummary"
 components:
   schemas:
     HealthStatus:
@@ -272,3 +537,248 @@ components:
         completionRate:
           type: number
       required: [total, active, completed, overdue, byPriority, completionRate]
+    TrackerUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        mobile:
+          type: string
+          nullable: true
+        username:
+          type: string
+        role:
+          type: string
+          enum: [admin, developer, tester]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, email, username, role, createdAt]
+    TrackerLogin:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      required: [username, password]
+    CreateTrackerUser:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+        mobile:
+          type: string
+          nullable: true
+        username:
+          type: string
+          minLength: 3
+          maxLength: 60
+        password:
+          type: string
+          minLength: 6
+          maxLength: 200
+        role:
+          type: string
+          enum: [admin, developer, tester]
+      required: [name, email, username, password, role]
+    UpdateTrackerUser:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+        mobile:
+          type: string
+          nullable: true
+        password:
+          type: string
+          minLength: 6
+          maxLength: 200
+        role:
+          type: string
+          enum: [admin, developer, tester]
+    Requirement:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [open, in_testing, needs_fix, confirmed, pushed_to_production]
+        priority:
+          type: string
+          enum: [low, medium, high]
+        developerId:
+          type: integer
+        developerName:
+          type: string
+        testerId:
+          type: integer
+          nullable: true
+        testerName:
+          type: string
+          nullable: true
+        testCycles:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, title, status, priority, developerId, developerName, testCycles, createdAt, updatedAt]
+    RequirementEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        requirementId:
+          type: integer
+        kind:
+          type: string
+          enum: [created, transitioned, comment, assigned]
+        fromStatus:
+          type: string
+          nullable: true
+        toStatus:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        actorId:
+          type: integer
+        actorName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, requirementId, kind, actorId, actorName, createdAt]
+    RequirementComment:
+      type: object
+      properties:
+        id:
+          type: integer
+        requirementId:
+          type: integer
+        body:
+          type: string
+        authorId:
+          type: integer
+        authorName:
+          type: string
+        authorRole:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, requirementId, body, authorId, authorName, authorRole, createdAt]
+    RequirementDetail:
+      type: object
+      properties:
+        requirement:
+          $ref: "#/components/schemas/Requirement"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequirementEvent"
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequirementComment"
+      required: [requirement, events, comments]
+    CreateRequirement:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        priority:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+        testerId:
+          type: integer
+          nullable: true
+      required: [title]
+    UpdateRequirement:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        priority:
+          type: string
+          enum: [low, medium, high]
+        testerId:
+          type: integer
+          nullable: true
+    TransitionRequirement:
+      type: object
+      properties:
+        toStatus:
+          type: string
+          enum: [open, in_testing, needs_fix, confirmed, pushed_to_production]
+        note:
+          type: string
+          nullable: true
+      required: [toStatus]
+    CreateComment:
+      type: object
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required: [body]
+    TrackerStatsSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        open:
+          type: integer
+        inTesting:
+          type: integer
+        needsFix:
+          type: integer
+        confirmed:
+          type: integer
+        pushedToProduction:
+          type: integer
+        myOpen:
+          type: integer
+        recent:
+          type: array
+          items:
+            $ref: "#/components/schemas/Requirement"
+      required: [total, open, inTesting, needsFix, confirmed, pushedToProduction, myOpen, recent]

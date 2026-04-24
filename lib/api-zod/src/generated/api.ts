@@ -161,3 +161,385 @@ export const GetRecentActivityResponseItem = zod.object({
 export const GetRecentActivityResponse = zod.array(
   GetRecentActivityResponseItem,
 );
+
+/**
+ * @summary Login with username and password
+ */
+
+export const TrackerLoginBody = zod.object({
+  username: zod.string().min(1),
+  password: zod.string().min(1),
+});
+
+export const TrackerLoginResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  mobile: zod.string().nullish(),
+  username: zod.string(),
+  role: zod.enum(["admin", "developer", "tester"]),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get the current logged in user
+ */
+export const TrackerMeResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  mobile: zod.string().nullish(),
+  username: zod.string(),
+  role: zod.enum(["admin", "developer", "tester"]),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List all users (admin only)
+ */
+export const TrackerListUsersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  mobile: zod.string().nullish(),
+  username: zod.string(),
+  role: zod.enum(["admin", "developer", "tester"]),
+  createdAt: zod.coerce.date(),
+});
+export const TrackerListUsersResponse = zod.array(TrackerListUsersResponseItem);
+
+/**
+ * @summary Create a new user (admin only)
+ */
+export const trackerCreateUserBodyNameMax = 120;
+
+export const trackerCreateUserBodyUsernameMin = 3;
+export const trackerCreateUserBodyUsernameMax = 60;
+
+export const trackerCreateUserBodyPasswordMin = 6;
+export const trackerCreateUserBodyPasswordMax = 200;
+
+export const TrackerCreateUserBody = zod.object({
+  name: zod.string().min(1).max(trackerCreateUserBodyNameMax),
+  email: zod.string().email(),
+  mobile: zod.string().nullish(),
+  username: zod
+    .string()
+    .min(trackerCreateUserBodyUsernameMin)
+    .max(trackerCreateUserBodyUsernameMax),
+  password: zod
+    .string()
+    .min(trackerCreateUserBodyPasswordMin)
+    .max(trackerCreateUserBodyPasswordMax),
+  role: zod.enum(["admin", "developer", "tester"]),
+});
+
+/**
+ * @summary Update a user (admin only)
+ */
+export const TrackerUpdateUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const trackerUpdateUserBodyNameMax = 120;
+
+export const trackerUpdateUserBodyPasswordMin = 6;
+export const trackerUpdateUserBodyPasswordMax = 200;
+
+export const TrackerUpdateUserBody = zod.object({
+  name: zod.string().min(1).max(trackerUpdateUserBodyNameMax).optional(),
+  email: zod.string().email().optional(),
+  mobile: zod.string().nullish(),
+  password: zod
+    .string()
+    .min(trackerUpdateUserBodyPasswordMin)
+    .max(trackerUpdateUserBodyPasswordMax)
+    .optional(),
+  role: zod.enum(["admin", "developer", "tester"]).optional(),
+});
+
+export const TrackerUpdateUserResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  mobile: zod.string().nullish(),
+  username: zod.string(),
+  role: zod.enum(["admin", "developer", "tester"]),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a user (admin only)
+ */
+export const TrackerDeleteUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List requirements (filtered by status, search, assignee)
+ */
+export const trackerListRequirementsQueryStatusDefault = `all`;
+export const trackerListRequirementsQueryMineDefault = false;
+
+export const TrackerListRequirementsQueryParams = zod.object({
+  status: zod
+    .enum([
+      "all",
+      "open",
+      "in_testing",
+      "needs_fix",
+      "confirmed",
+      "pushed_to_production",
+    ])
+    .default(trackerListRequirementsQueryStatusDefault),
+  search: zod.coerce.string().optional(),
+  mine: zod.coerce.boolean().default(trackerListRequirementsQueryMineDefault),
+});
+
+export const TrackerListRequirementsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.enum([
+    "open",
+    "in_testing",
+    "needs_fix",
+    "confirmed",
+    "pushed_to_production",
+  ]),
+  priority: zod.enum(["low", "medium", "high"]),
+  developerId: zod.number(),
+  developerName: zod.string(),
+  testerId: zod.number().nullish(),
+  testerName: zod.string().nullish(),
+  testCycles: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const TrackerListRequirementsResponse = zod.array(
+  TrackerListRequirementsResponseItem,
+);
+
+/**
+ * @summary Create a requirement (developer/admin only)
+ */
+export const trackerCreateRequirementBodyTitleMax = 200;
+
+export const trackerCreateRequirementBodyPriorityDefault = `medium`;
+
+export const TrackerCreateRequirementBody = zod.object({
+  title: zod.string().min(1).max(trackerCreateRequirementBodyTitleMax),
+  description: zod.string().nullish(),
+  priority: zod
+    .enum(["low", "medium", "high"])
+    .default(trackerCreateRequirementBodyPriorityDefault),
+  testerId: zod.number().nullish(),
+});
+
+/**
+ * @summary Get a requirement with its events and comments
+ */
+export const TrackerGetRequirementParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const TrackerGetRequirementResponse = zod.object({
+  requirement: zod.object({
+    id: zod.number(),
+    title: zod.string(),
+    description: zod.string().nullish(),
+    status: zod.enum([
+      "open",
+      "in_testing",
+      "needs_fix",
+      "confirmed",
+      "pushed_to_production",
+    ]),
+    priority: zod.enum(["low", "medium", "high"]),
+    developerId: zod.number(),
+    developerName: zod.string(),
+    testerId: zod.number().nullish(),
+    testerName: zod.string().nullish(),
+    testCycles: zod.number(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  events: zod.array(
+    zod.object({
+      id: zod.number(),
+      requirementId: zod.number(),
+      kind: zod.enum(["created", "transitioned", "comment", "assigned"]),
+      fromStatus: zod.string().nullish(),
+      toStatus: zod.string().nullish(),
+      note: zod.string().nullish(),
+      actorId: zod.number(),
+      actorName: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  comments: zod.array(
+    zod.object({
+      id: zod.number(),
+      requirementId: zod.number(),
+      body: zod.string(),
+      authorId: zod.number(),
+      authorName: zod.string(),
+      authorRole: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update a requirement (developer/admin only)
+ */
+export const TrackerUpdateRequirementParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const trackerUpdateRequirementBodyTitleMax = 200;
+
+export const TrackerUpdateRequirementBody = zod.object({
+  title: zod
+    .string()
+    .min(1)
+    .max(trackerUpdateRequirementBodyTitleMax)
+    .optional(),
+  description: zod.string().nullish(),
+  priority: zod.enum(["low", "medium", "high"]).optional(),
+  testerId: zod.number().nullish(),
+});
+
+export const TrackerUpdateRequirementResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.enum([
+    "open",
+    "in_testing",
+    "needs_fix",
+    "confirmed",
+    "pushed_to_production",
+  ]),
+  priority: zod.enum(["low", "medium", "high"]),
+  developerId: zod.number(),
+  developerName: zod.string(),
+  testerId: zod.number().nullish(),
+  testerName: zod.string().nullish(),
+  testCycles: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Move requirement to a new stage
+ */
+export const TrackerTransitionRequirementParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const TrackerTransitionRequirementBody = zod.object({
+  toStatus: zod.enum([
+    "open",
+    "in_testing",
+    "needs_fix",
+    "confirmed",
+    "pushed_to_production",
+  ]),
+  note: zod.string().nullish(),
+});
+
+export const TrackerTransitionRequirementResponse = zod.object({
+  requirement: zod.object({
+    id: zod.number(),
+    title: zod.string(),
+    description: zod.string().nullish(),
+    status: zod.enum([
+      "open",
+      "in_testing",
+      "needs_fix",
+      "confirmed",
+      "pushed_to_production",
+    ]),
+    priority: zod.enum(["low", "medium", "high"]),
+    developerId: zod.number(),
+    developerName: zod.string(),
+    testerId: zod.number().nullish(),
+    testerName: zod.string().nullish(),
+    testCycles: zod.number(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  events: zod.array(
+    zod.object({
+      id: zod.number(),
+      requirementId: zod.number(),
+      kind: zod.enum(["created", "transitioned", "comment", "assigned"]),
+      fromStatus: zod.string().nullish(),
+      toStatus: zod.string().nullish(),
+      note: zod.string().nullish(),
+      actorId: zod.number(),
+      actorName: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  comments: zod.array(
+    zod.object({
+      id: zod.number(),
+      requirementId: zod.number(),
+      body: zod.string(),
+      authorId: zod.number(),
+      authorName: zod.string(),
+      authorRole: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Add a comment to a requirement
+ */
+export const TrackerAddCommentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const trackerAddCommentBodyBodyMax = 2000;
+
+export const TrackerAddCommentBody = zod.object({
+  body: zod.string().min(1).max(trackerAddCommentBodyBodyMax),
+});
+
+/**
+ * @summary Tracker dashboard summary
+ */
+export const TrackerStatsSummaryResponse = zod.object({
+  total: zod.number(),
+  open: zod.number(),
+  inTesting: zod.number(),
+  needsFix: zod.number(),
+  confirmed: zod.number(),
+  pushedToProduction: zod.number(),
+  myOpen: zod.number(),
+  recent: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      description: zod.string().nullish(),
+      status: zod.enum([
+        "open",
+        "in_testing",
+        "needs_fix",
+        "confirmed",
+        "pushed_to_production",
+      ]),
+      priority: zod.enum(["low", "medium", "high"]),
+      developerId: zod.number(),
+      developerName: zod.string(),
+      testerId: zod.number().nullish(),
+      testerName: zod.string().nullish(),
+      testCycles: zod.number(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});

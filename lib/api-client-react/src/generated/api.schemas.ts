@@ -84,6 +84,235 @@ export interface StatsSummary {
   completionRate: number;
 }
 
+export type TrackerUserRole =
+  (typeof TrackerUserRole)[keyof typeof TrackerUserRole];
+
+export const TrackerUserRole = {
+  admin: "admin",
+  developer: "developer",
+  tester: "tester",
+} as const;
+
+export interface TrackerUser {
+  id: number;
+  name: string;
+  email: string;
+  mobile?: string | null;
+  username: string;
+  role: TrackerUserRole;
+  createdAt: string;
+}
+
+export interface TrackerLogin {
+  /** @minLength 1 */
+  username: string;
+  /** @minLength 1 */
+  password: string;
+}
+
+export type CreateTrackerUserRole =
+  (typeof CreateTrackerUserRole)[keyof typeof CreateTrackerUserRole];
+
+export const CreateTrackerUserRole = {
+  admin: "admin",
+  developer: "developer",
+  tester: "tester",
+} as const;
+
+export interface CreateTrackerUser {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name: string;
+  email: string;
+  mobile?: string | null;
+  /**
+   * @minLength 3
+   * @maxLength 60
+   */
+  username: string;
+  /**
+   * @minLength 6
+   * @maxLength 200
+   */
+  password: string;
+  role: CreateTrackerUserRole;
+}
+
+export type UpdateTrackerUserRole =
+  (typeof UpdateTrackerUserRole)[keyof typeof UpdateTrackerUserRole];
+
+export const UpdateTrackerUserRole = {
+  admin: "admin",
+  developer: "developer",
+  tester: "tester",
+} as const;
+
+export interface UpdateTrackerUser {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name?: string;
+  email?: string;
+  mobile?: string | null;
+  /**
+   * @minLength 6
+   * @maxLength 200
+   */
+  password?: string;
+  role?: UpdateTrackerUserRole;
+}
+
+export type RequirementStatus =
+  (typeof RequirementStatus)[keyof typeof RequirementStatus];
+
+export const RequirementStatus = {
+  open: "open",
+  in_testing: "in_testing",
+  needs_fix: "needs_fix",
+  confirmed: "confirmed",
+  pushed_to_production: "pushed_to_production",
+} as const;
+
+export type RequirementPriority =
+  (typeof RequirementPriority)[keyof typeof RequirementPriority];
+
+export const RequirementPriority = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export interface Requirement {
+  id: number;
+  title: string;
+  description?: string | null;
+  status: RequirementStatus;
+  priority: RequirementPriority;
+  developerId: number;
+  developerName: string;
+  testerId?: number | null;
+  testerName?: string | null;
+  testCycles: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RequirementEventKind =
+  (typeof RequirementEventKind)[keyof typeof RequirementEventKind];
+
+export const RequirementEventKind = {
+  created: "created",
+  transitioned: "transitioned",
+  comment: "comment",
+  assigned: "assigned",
+} as const;
+
+export interface RequirementEvent {
+  id: number;
+  requirementId: number;
+  kind: RequirementEventKind;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  note?: string | null;
+  actorId: number;
+  actorName: string;
+  createdAt: string;
+}
+
+export interface RequirementComment {
+  id: number;
+  requirementId: number;
+  body: string;
+  authorId: number;
+  authorName: string;
+  authorRole: string;
+  createdAt: string;
+}
+
+export interface RequirementDetail {
+  requirement: Requirement;
+  events: RequirementEvent[];
+  comments: RequirementComment[];
+}
+
+export type CreateRequirementPriority =
+  (typeof CreateRequirementPriority)[keyof typeof CreateRequirementPriority];
+
+export const CreateRequirementPriority = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export interface CreateRequirement {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  title: string;
+  description?: string | null;
+  priority?: CreateRequirementPriority;
+  testerId?: number | null;
+}
+
+export type UpdateRequirementPriority =
+  (typeof UpdateRequirementPriority)[keyof typeof UpdateRequirementPriority];
+
+export const UpdateRequirementPriority = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export interface UpdateRequirement {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  title?: string;
+  description?: string | null;
+  priority?: UpdateRequirementPriority;
+  testerId?: number | null;
+}
+
+export type TransitionRequirementToStatus =
+  (typeof TransitionRequirementToStatus)[keyof typeof TransitionRequirementToStatus];
+
+export const TransitionRequirementToStatus = {
+  open: "open",
+  in_testing: "in_testing",
+  needs_fix: "needs_fix",
+  confirmed: "confirmed",
+  pushed_to_production: "pushed_to_production",
+} as const;
+
+export interface TransitionRequirement {
+  toStatus: TransitionRequirementToStatus;
+  note?: string | null;
+}
+
+export interface CreateComment {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  body: string;
+}
+
+export interface TrackerStatsSummary {
+  total: number;
+  open: number;
+  inTesting: number;
+  needsFix: number;
+  confirmed: number;
+  pushedToProduction: number;
+  myOpen: number;
+  recent: Requirement[];
+}
+
 export type ListTasksParams = {
   status?: ListTasksStatus;
   priority?: ListTasksPriority;
@@ -107,4 +336,22 @@ export const ListTasksPriority = {
   low: "low",
   medium: "medium",
   high: "high",
+} as const;
+
+export type TrackerListRequirementsParams = {
+  status?: TrackerListRequirementsStatus;
+  search?: string;
+  mine?: boolean;
+};
+
+export type TrackerListRequirementsStatus =
+  (typeof TrackerListRequirementsStatus)[keyof typeof TrackerListRequirementsStatus];
+
+export const TrackerListRequirementsStatus = {
+  all: "all",
+  open: "open",
+  in_testing: "in_testing",
+  needs_fix: "needs_fix",
+  confirmed: "confirmed",
+  pushed_to_production: "pushed_to_production",
 } as const;

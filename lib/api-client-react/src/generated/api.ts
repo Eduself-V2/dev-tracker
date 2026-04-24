@@ -17,12 +17,25 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  CreateComment,
+  CreateRequirement,
   CreateTask,
+  CreateTrackerUser,
   HealthStatus,
   ListTasksParams,
+  Requirement,
+  RequirementComment,
+  RequirementDetail,
   StatsSummary,
   Task,
+  TrackerListRequirementsParams,
+  TrackerLogin,
+  TrackerStatsSummary,
+  TrackerUser,
+  TransitionRequirement,
+  UpdateRequirement,
   UpdateTask,
+  UpdateTrackerUser,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -763,6 +776,1184 @@ export function useGetRecentActivity<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetRecentActivityQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Login with username and password
+ */
+export const getTrackerLoginUrl = () => {
+  return `/api/tracker/auth/login`;
+};
+
+export const trackerLogin = async (
+  trackerLogin: TrackerLogin,
+  options?: RequestInit,
+): Promise<TrackerUser> => {
+  return customFetch<TrackerUser>(getTrackerLoginUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(trackerLogin),
+  });
+};
+
+export const getTrackerLoginMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerLogin>>,
+    TError,
+    { data: BodyType<TrackerLogin> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerLogin>>,
+  TError,
+  { data: BodyType<TrackerLogin> },
+  TContext
+> => {
+  const mutationKey = ["trackerLogin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerLogin>>,
+    { data: BodyType<TrackerLogin> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return trackerLogin(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerLoginMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerLogin>>
+>;
+export type TrackerLoginMutationBody = BodyType<TrackerLogin>;
+export type TrackerLoginMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Login with username and password
+ */
+export const useTrackerLogin = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerLogin>>,
+    TError,
+    { data: BodyType<TrackerLogin> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerLogin>>,
+  TError,
+  { data: BodyType<TrackerLogin> },
+  TContext
+> => {
+  return useMutation(getTrackerLoginMutationOptions(options));
+};
+
+/**
+ * @summary Logout the current session
+ */
+export const getTrackerLogoutUrl = () => {
+  return `/api/tracker/auth/logout`;
+};
+
+export const trackerLogout = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getTrackerLogoutUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getTrackerLogoutMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerLogout>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerLogout>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["trackerLogout"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerLogout>>,
+    void
+  > = () => {
+    return trackerLogout(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerLogoutMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerLogout>>
+>;
+
+export type TrackerLogoutMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Logout the current session
+ */
+export const useTrackerLogout = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerLogout>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerLogout>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getTrackerLogoutMutationOptions(options));
+};
+
+/**
+ * @summary Get the current logged in user
+ */
+export const getTrackerMeUrl = () => {
+  return `/api/tracker/auth/me`;
+};
+
+export const trackerMe = async (
+  options?: RequestInit,
+): Promise<TrackerUser> => {
+  return customFetch<TrackerUser>(getTrackerMeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getTrackerMeQueryKey = () => {
+  return [`/api/tracker/auth/me`] as const;
+};
+
+export const getTrackerMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof trackerMe>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof trackerMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getTrackerMeQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof trackerMe>>> = ({
+    signal,
+  }) => trackerMe({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof trackerMe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type TrackerMeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof trackerMe>>
+>;
+export type TrackerMeQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the current logged in user
+ */
+
+export function useTrackerMe<
+  TData = Awaited<ReturnType<typeof trackerMe>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof trackerMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getTrackerMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all users (admin only)
+ */
+export const getTrackerListUsersUrl = () => {
+  return `/api/tracker/users`;
+};
+
+export const trackerListUsers = async (
+  options?: RequestInit,
+): Promise<TrackerUser[]> => {
+  return customFetch<TrackerUser[]>(getTrackerListUsersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getTrackerListUsersQueryKey = () => {
+  return [`/api/tracker/users`] as const;
+};
+
+export const getTrackerListUsersQueryOptions = <
+  TData = Awaited<ReturnType<typeof trackerListUsers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof trackerListUsers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getTrackerListUsersQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof trackerListUsers>>
+  > = ({ signal }) => trackerListUsers({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof trackerListUsers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type TrackerListUsersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof trackerListUsers>>
+>;
+export type TrackerListUsersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all users (admin only)
+ */
+
+export function useTrackerListUsers<
+  TData = Awaited<ReturnType<typeof trackerListUsers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof trackerListUsers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getTrackerListUsersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new user (admin only)
+ */
+export const getTrackerCreateUserUrl = () => {
+  return `/api/tracker/users`;
+};
+
+export const trackerCreateUser = async (
+  createTrackerUser: CreateTrackerUser,
+  options?: RequestInit,
+): Promise<TrackerUser> => {
+  return customFetch<TrackerUser>(getTrackerCreateUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createTrackerUser),
+  });
+};
+
+export const getTrackerCreateUserMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerCreateUser>>,
+    TError,
+    { data: BodyType<CreateTrackerUser> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerCreateUser>>,
+  TError,
+  { data: BodyType<CreateTrackerUser> },
+  TContext
+> => {
+  const mutationKey = ["trackerCreateUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerCreateUser>>,
+    { data: BodyType<CreateTrackerUser> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return trackerCreateUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerCreateUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerCreateUser>>
+>;
+export type TrackerCreateUserMutationBody = BodyType<CreateTrackerUser>;
+export type TrackerCreateUserMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new user (admin only)
+ */
+export const useTrackerCreateUser = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerCreateUser>>,
+    TError,
+    { data: BodyType<CreateTrackerUser> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerCreateUser>>,
+  TError,
+  { data: BodyType<CreateTrackerUser> },
+  TContext
+> => {
+  return useMutation(getTrackerCreateUserMutationOptions(options));
+};
+
+/**
+ * @summary Update a user (admin only)
+ */
+export const getTrackerUpdateUserUrl = (id: number) => {
+  return `/api/tracker/users/${id}`;
+};
+
+export const trackerUpdateUser = async (
+  id: number,
+  updateTrackerUser: UpdateTrackerUser,
+  options?: RequestInit,
+): Promise<TrackerUser> => {
+  return customFetch<TrackerUser>(getTrackerUpdateUserUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateTrackerUser),
+  });
+};
+
+export const getTrackerUpdateUserMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerUpdateUser>>,
+    TError,
+    { id: number; data: BodyType<UpdateTrackerUser> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerUpdateUser>>,
+  TError,
+  { id: number; data: BodyType<UpdateTrackerUser> },
+  TContext
+> => {
+  const mutationKey = ["trackerUpdateUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerUpdateUser>>,
+    { id: number; data: BodyType<UpdateTrackerUser> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return trackerUpdateUser(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerUpdateUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerUpdateUser>>
+>;
+export type TrackerUpdateUserMutationBody = BodyType<UpdateTrackerUser>;
+export type TrackerUpdateUserMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a user (admin only)
+ */
+export const useTrackerUpdateUser = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerUpdateUser>>,
+    TError,
+    { id: number; data: BodyType<UpdateTrackerUser> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerUpdateUser>>,
+  TError,
+  { id: number; data: BodyType<UpdateTrackerUser> },
+  TContext
+> => {
+  return useMutation(getTrackerUpdateUserMutationOptions(options));
+};
+
+/**
+ * @summary Delete a user (admin only)
+ */
+export const getTrackerDeleteUserUrl = (id: number) => {
+  return `/api/tracker/users/${id}`;
+};
+
+export const trackerDeleteUser = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getTrackerDeleteUserUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getTrackerDeleteUserMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerDeleteUser>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerDeleteUser>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["trackerDeleteUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerDeleteUser>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return trackerDeleteUser(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerDeleteUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerDeleteUser>>
+>;
+
+export type TrackerDeleteUserMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a user (admin only)
+ */
+export const useTrackerDeleteUser = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerDeleteUser>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerDeleteUser>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getTrackerDeleteUserMutationOptions(options));
+};
+
+/**
+ * @summary List requirements (filtered by status, search, assignee)
+ */
+export const getTrackerListRequirementsUrl = (
+  params?: TrackerListRequirementsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/tracker/requirements?${stringifiedParams}`
+    : `/api/tracker/requirements`;
+};
+
+export const trackerListRequirements = async (
+  params?: TrackerListRequirementsParams,
+  options?: RequestInit,
+): Promise<Requirement[]> => {
+  return customFetch<Requirement[]>(getTrackerListRequirementsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getTrackerListRequirementsQueryKey = (
+  params?: TrackerListRequirementsParams,
+) => {
+  return [`/api/tracker/requirements`, ...(params ? [params] : [])] as const;
+};
+
+export const getTrackerListRequirementsQueryOptions = <
+  TData = Awaited<ReturnType<typeof trackerListRequirements>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: TrackerListRequirementsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof trackerListRequirements>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getTrackerListRequirementsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof trackerListRequirements>>
+  > = ({ signal }) =>
+    trackerListRequirements(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof trackerListRequirements>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type TrackerListRequirementsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof trackerListRequirements>>
+>;
+export type TrackerListRequirementsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List requirements (filtered by status, search, assignee)
+ */
+
+export function useTrackerListRequirements<
+  TData = Awaited<ReturnType<typeof trackerListRequirements>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: TrackerListRequirementsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof trackerListRequirements>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getTrackerListRequirementsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a requirement (developer/admin only)
+ */
+export const getTrackerCreateRequirementUrl = () => {
+  return `/api/tracker/requirements`;
+};
+
+export const trackerCreateRequirement = async (
+  createRequirement: CreateRequirement,
+  options?: RequestInit,
+): Promise<Requirement> => {
+  return customFetch<Requirement>(getTrackerCreateRequirementUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createRequirement),
+  });
+};
+
+export const getTrackerCreateRequirementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerCreateRequirement>>,
+    TError,
+    { data: BodyType<CreateRequirement> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerCreateRequirement>>,
+  TError,
+  { data: BodyType<CreateRequirement> },
+  TContext
+> => {
+  const mutationKey = ["trackerCreateRequirement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerCreateRequirement>>,
+    { data: BodyType<CreateRequirement> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return trackerCreateRequirement(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerCreateRequirementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerCreateRequirement>>
+>;
+export type TrackerCreateRequirementMutationBody = BodyType<CreateRequirement>;
+export type TrackerCreateRequirementMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a requirement (developer/admin only)
+ */
+export const useTrackerCreateRequirement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerCreateRequirement>>,
+    TError,
+    { data: BodyType<CreateRequirement> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerCreateRequirement>>,
+  TError,
+  { data: BodyType<CreateRequirement> },
+  TContext
+> => {
+  return useMutation(getTrackerCreateRequirementMutationOptions(options));
+};
+
+/**
+ * @summary Get a requirement with its events and comments
+ */
+export const getTrackerGetRequirementUrl = (id: number) => {
+  return `/api/tracker/requirements/${id}`;
+};
+
+export const trackerGetRequirement = async (
+  id: number,
+  options?: RequestInit,
+): Promise<RequirementDetail> => {
+  return customFetch<RequirementDetail>(getTrackerGetRequirementUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getTrackerGetRequirementQueryKey = (id: number) => {
+  return [`/api/tracker/requirements/${id}`] as const;
+};
+
+export const getTrackerGetRequirementQueryOptions = <
+  TData = Awaited<ReturnType<typeof trackerGetRequirement>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof trackerGetRequirement>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getTrackerGetRequirementQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof trackerGetRequirement>>
+  > = ({ signal }) => trackerGetRequirement(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof trackerGetRequirement>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type TrackerGetRequirementQueryResult = NonNullable<
+  Awaited<ReturnType<typeof trackerGetRequirement>>
+>;
+export type TrackerGetRequirementQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get a requirement with its events and comments
+ */
+
+export function useTrackerGetRequirement<
+  TData = Awaited<ReturnType<typeof trackerGetRequirement>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof trackerGetRequirement>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getTrackerGetRequirementQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a requirement (developer/admin only)
+ */
+export const getTrackerUpdateRequirementUrl = (id: number) => {
+  return `/api/tracker/requirements/${id}`;
+};
+
+export const trackerUpdateRequirement = async (
+  id: number,
+  updateRequirement: UpdateRequirement,
+  options?: RequestInit,
+): Promise<Requirement> => {
+  return customFetch<Requirement>(getTrackerUpdateRequirementUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateRequirement),
+  });
+};
+
+export const getTrackerUpdateRequirementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerUpdateRequirement>>,
+    TError,
+    { id: number; data: BodyType<UpdateRequirement> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerUpdateRequirement>>,
+  TError,
+  { id: number; data: BodyType<UpdateRequirement> },
+  TContext
+> => {
+  const mutationKey = ["trackerUpdateRequirement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerUpdateRequirement>>,
+    { id: number; data: BodyType<UpdateRequirement> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return trackerUpdateRequirement(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerUpdateRequirementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerUpdateRequirement>>
+>;
+export type TrackerUpdateRequirementMutationBody = BodyType<UpdateRequirement>;
+export type TrackerUpdateRequirementMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a requirement (developer/admin only)
+ */
+export const useTrackerUpdateRequirement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerUpdateRequirement>>,
+    TError,
+    { id: number; data: BodyType<UpdateRequirement> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerUpdateRequirement>>,
+  TError,
+  { id: number; data: BodyType<UpdateRequirement> },
+  TContext
+> => {
+  return useMutation(getTrackerUpdateRequirementMutationOptions(options));
+};
+
+/**
+ * @summary Move requirement to a new stage
+ */
+export const getTrackerTransitionRequirementUrl = (id: number) => {
+  return `/api/tracker/requirements/${id}/transition`;
+};
+
+export const trackerTransitionRequirement = async (
+  id: number,
+  transitionRequirement: TransitionRequirement,
+  options?: RequestInit,
+): Promise<RequirementDetail> => {
+  return customFetch<RequirementDetail>(
+    getTrackerTransitionRequirementUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(transitionRequirement),
+    },
+  );
+};
+
+export const getTrackerTransitionRequirementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerTransitionRequirement>>,
+    TError,
+    { id: number; data: BodyType<TransitionRequirement> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerTransitionRequirement>>,
+  TError,
+  { id: number; data: BodyType<TransitionRequirement> },
+  TContext
+> => {
+  const mutationKey = ["trackerTransitionRequirement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerTransitionRequirement>>,
+    { id: number; data: BodyType<TransitionRequirement> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return trackerTransitionRequirement(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerTransitionRequirementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerTransitionRequirement>>
+>;
+export type TrackerTransitionRequirementMutationBody =
+  BodyType<TransitionRequirement>;
+export type TrackerTransitionRequirementMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Move requirement to a new stage
+ */
+export const useTrackerTransitionRequirement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerTransitionRequirement>>,
+    TError,
+    { id: number; data: BodyType<TransitionRequirement> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerTransitionRequirement>>,
+  TError,
+  { id: number; data: BodyType<TransitionRequirement> },
+  TContext
+> => {
+  return useMutation(getTrackerTransitionRequirementMutationOptions(options));
+};
+
+/**
+ * @summary Add a comment to a requirement
+ */
+export const getTrackerAddCommentUrl = (id: number) => {
+  return `/api/tracker/requirements/${id}/comments`;
+};
+
+export const trackerAddComment = async (
+  id: number,
+  createComment: CreateComment,
+  options?: RequestInit,
+): Promise<RequirementComment> => {
+  return customFetch<RequirementComment>(getTrackerAddCommentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createComment),
+  });
+};
+
+export const getTrackerAddCommentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerAddComment>>,
+    TError,
+    { id: number; data: BodyType<CreateComment> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerAddComment>>,
+  TError,
+  { id: number; data: BodyType<CreateComment> },
+  TContext
+> => {
+  const mutationKey = ["trackerAddComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerAddComment>>,
+    { id: number; data: BodyType<CreateComment> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return trackerAddComment(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerAddCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerAddComment>>
+>;
+export type TrackerAddCommentMutationBody = BodyType<CreateComment>;
+export type TrackerAddCommentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a comment to a requirement
+ */
+export const useTrackerAddComment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerAddComment>>,
+    TError,
+    { id: number; data: BodyType<CreateComment> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerAddComment>>,
+  TError,
+  { id: number; data: BodyType<CreateComment> },
+  TContext
+> => {
+  return useMutation(getTrackerAddCommentMutationOptions(options));
+};
+
+/**
+ * @summary Tracker dashboard summary
+ */
+export const getTrackerStatsSummaryUrl = () => {
+  return `/api/tracker/stats/summary`;
+};
+
+export const trackerStatsSummary = async (
+  options?: RequestInit,
+): Promise<TrackerStatsSummary> => {
+  return customFetch<TrackerStatsSummary>(getTrackerStatsSummaryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getTrackerStatsSummaryQueryKey = () => {
+  return [`/api/tracker/stats/summary`] as const;
+};
+
+export const getTrackerStatsSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof trackerStatsSummary>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof trackerStatsSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getTrackerStatsSummaryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof trackerStatsSummary>>
+  > = ({ signal }) => trackerStatsSummary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof trackerStatsSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type TrackerStatsSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof trackerStatsSummary>>
+>;
+export type TrackerStatsSummaryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Tracker dashboard summary
+ */
+
+export function useTrackerStatsSummary<
+  TData = Awaited<ReturnType<typeof trackerStatsSummary>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof trackerStatsSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getTrackerStatsSummaryQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
