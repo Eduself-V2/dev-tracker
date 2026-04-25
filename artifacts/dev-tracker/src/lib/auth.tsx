@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useTrackerMe } from "@workspace/api-client-react";
+import { useTrackerMe, getTrackerMeQueryKey } from "@workspace/api-client-react";
 import type { TrackerUser } from "@workspace/api-client-react";
 import { Loader2 } from "lucide-react";
 
@@ -19,6 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { data: user, isLoading, isError } = useTrackerMe({
     query: {
+      queryKey: getTrackerMeQueryKey(),
       retry: false,
     }
   });

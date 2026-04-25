@@ -10,7 +10,7 @@ import {
   useTrackerDeleteUser,
   getTrackerListUsersQueryKey
 } from "@workspace/api-client-react";
-import { CreateTrackerUserRole } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { CreateTrackerUserRole } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -47,7 +47,10 @@ export default function Users() {
   const [editUserId, setEditUserId] = useState<number | null>(null);
 
   const { data: users, isLoading } = useTrackerListUsers({
-    query: { enabled: currentUser?.role === "admin" }
+    query: {
+      queryKey: getTrackerListUsersQueryKey(),
+      enabled: currentUser?.role === "admin",
+    }
   });
 
   const createMutation = useTrackerCreateUser({

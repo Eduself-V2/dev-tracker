@@ -9,7 +9,7 @@ import {
   getTrackerListRequirementsQueryKey,
   getTrackerStatsSummaryQueryKey
 } from "@workspace/api-client-react";
-import { TransitionRequirementToStatus } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { TransitionRequirementToStatus } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -19,18 +19,37 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Clock, MessageSquare, ArrowRight, Play, Edit, User, Activity, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Clock,
+  MessageSquare,
+  ArrowRight,
+  Play,
+  User,
+  Activity,
+  AlertCircle,
+  CheckCircle2,
+  PlusCircle,
+} from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
-const getAllowedTransitions = (currentStatus: string, role: string): { status: TransitionRequirementToStatus, label: string, icon: any, variant: "default"|"destructive"|"secondary" }[] => {
+type Transition = {
+  status: TransitionRequirementToStatus;
+  label: string;
+  icon: any;
+  variant: "default" | "destructive" | "secondary";
+};
+
+const getAllowedTransitions = (currentStatus: string, role: string): Transition[] => {
   if (role === 'admin') {
-    return [
+    const all: Transition[] = [
       { status: 'open', label: 'Move to Open', icon: Activity, variant: 'secondary' },
       { status: 'in_testing', label: 'Move to In Testing', icon: Play, variant: 'default' },
       { status: 'needs_fix', label: 'Move to Needs Fix', icon: AlertCircle, variant: 'destructive' },
       { status: 'confirmed', label: 'Move to Confirmed', icon: CheckCircle2, variant: 'default' },
       { status: 'pushed_to_production', label: 'Push to Production', icon: ArrowRight, variant: 'default' },
-    ].filter(t => t.status !== currentStatus);
+    ];
+    return all.filter(t => t.status !== currentStatus);
   }
 
   if (role === 'developer') {
@@ -55,8 +74,6 @@ const getAllowedTransitions = (currentStatus: string, role: string): { status: T
 
   return [];
 };
-
-import { CheckCircle2 } from "lucide-react";
 
 export default function RequirementDetail() {
   const { id } = useParams();

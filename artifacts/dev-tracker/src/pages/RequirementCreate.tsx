@@ -8,6 +8,7 @@ import {
   useTrackerCreateRequirement, 
   useTrackerListUsers, 
   getTrackerListRequirementsQueryKey,
+  getTrackerListUsersQueryKey,
   getTrackerStatsSummaryQueryKey
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -19,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, ArrowLeft, Loader2, Save } from "lucide-react";
-import { CreateRequirementPriority } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { CreateRequirementPriority } from "@workspace/api-client-react";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title is too long"),
@@ -38,6 +39,7 @@ export default function RequirementCreate() {
 
   const { data: users } = useTrackerListUsers({
     query: {
+      queryKey: getTrackerListUsersQueryKey(),
       enabled: user?.role === "admin"
     }
   });
