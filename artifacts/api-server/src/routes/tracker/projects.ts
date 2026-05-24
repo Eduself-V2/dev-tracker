@@ -17,10 +17,23 @@ function serialize(p: ProjectRow) {
   };
 }
 
-router.get("/", async (_req, res, next) => {
+router.get("/", async (req, res, next) => {
   try {
+    const me = req.trackerUser!;
+    if (me.role === "admin") {
+      const [rows] = await trackerPool.query(
+        "SELECT id, name, description, created_at FROM projects ORDER BY created_at DESC",
+      );
+      res.json((rows as ProjectRow[]).map(serialize));
+      return;
+    }
     const [rows] = await trackerPool.query(
-      "SELECT id, name, description, created_at FROM projects ORDER BY created_at DESC",
+      `SELECT DISTINCT p.id, p.name, p.description, p.created_at
+       FROM projects p
+       JOIN requirements r ON r.project_id = p.id
+       WHERE r.assignee_id = ?
+       ORDER BY p.created_at DESC`,
+      [me.id],
     );
     res.json((rows as ProjectRow[]).map(serialize));
   } catch (err) {

@@ -311,6 +311,18 @@ router.patch("/:id", async (req, res, next) => {
       fields.push("assignee_id = ?");
       values.push(body.assigneeId);
     }
+    if (body.projectId !== undefined) {
+      const [prows] = await trackerPool.query(
+        "SELECT id FROM projects WHERE id = ?",
+        [body.projectId],
+      );
+      if ((prows as Array<{ id: number }>).length === 0) {
+        res.status(400).json({ error: "Project not found" });
+        return;
+      }
+      fields.push("project_id = ?");
+      values.push(body.projectId);
+    }
 
     if (fields.length > 0) {
       values.push(id);
