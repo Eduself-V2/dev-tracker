@@ -337,6 +337,21 @@ paths:
           required: false
           schema:
             type: integer
+        - in: query
+          name: createdBy
+          required: false
+          schema:
+            type: integer
+        - in: query
+          name: testedBy
+          required: false
+          schema:
+            type: integer
+        - in: query
+          name: assignedTo
+          required: false
+          schema:
+            type: integer
       responses:
         "200":
           description: Matching requirements

@@ -122,6 +122,26 @@ router.get("/", async (req, res, next) => {
       const term = `%${params.search.trim()}%`;
       values.push(term, term);
     }
+    if (params.createdBy !== undefined) {
+      conditions.push("r.developer_id = ?");
+      values.push(params.createdBy);
+    }
+    if (params.testedBy !== undefined) {
+      if (params.testedBy === null) {
+        conditions.push("r.tester_id IS NULL");
+      } else {
+        conditions.push("r.tester_id = ?");
+        values.push(params.testedBy);
+      }
+    }
+    if (params.assignedTo !== undefined) {
+      if (params.assignedTo === null) {
+        conditions.push("r.assignee_id IS NULL");
+      } else {
+        conditions.push("r.assignee_id = ?");
+        values.push(params.assignedTo);
+      }
+    }
     if (params.mine) {
       const me = req.trackerUser!;
       conditions.push("r.assignee_id = ?");

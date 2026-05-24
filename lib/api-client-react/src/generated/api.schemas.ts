@@ -385,6 +385,9 @@ export type TrackerListRequirementsParams = {
   search?: string;
   mine?: boolean;
   projectId?: number;
+  createdBy?: number;
+  testedBy?: number;
+  assignedTo?: number;
 };
 
 export type TrackerListRequirementsStatus =

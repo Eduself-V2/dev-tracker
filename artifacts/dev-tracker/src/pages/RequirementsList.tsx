@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { useTrackerListRequirements, useTrackerListProjects, getTrackerListRequirementsQueryKey } from "@workspace/api-client-react";
+import { useTrackerListRequirements, useTrackerListProjects, useTrackerListUsers, getTrackerListRequirementsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth";
 import { format } from "date-fns";
-import { Search, PlusCircle, AlertCircle, Circle, Clock, CheckCircle2, ArrowRightCircle, ListTodo, FolderKanban } from "lucide-react";
+import { Search, PlusCircle, AlertCircle, Circle, Clock, CheckCircle2, ArrowRightCircle, ListTodo, FolderKanban, User } from "lucide-react";
 import { TrackerListRequirementsStatus } from "@workspace/api-client-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -44,14 +44,21 @@ export default function RequirementsList() {
   const [status, setStatus] = useState<TrackerListRequirementsStatus>("all");
   const [mine, setMine] = useState(false);
   const [projectId, setProjectId] = useState<number | undefined>(getInitialProjectId());
+  const [createdBy, setCreatedBy] = useState<number | undefined>(undefined);
+  const [testedBy, setTestedBy] = useState<number | undefined>(undefined);
+  const [assignedTo, setAssignedTo] = useState<number | undefined>(undefined);
 
   const { data: projects } = useTrackerListProjects();
+  const { data: allUsers } = useTrackerListUsers();
 
   const { data: requirements, isLoading } = useTrackerListRequirements({
     search: debouncedSearch || undefined,
     status: status !== "all" ? status : undefined,
     mine: mine ? true : undefined,
     projectId: projectId,
+    createdBy,
+    testedBy,
+    assignedTo,
   });
 
   const stageConfigs = [
@@ -140,6 +147,53 @@ export default function RequirementsList() {
               );
             })}
           </div>
+
+          {user?.role === "admin" && (
+            <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-border/40">
+              <div className="flex items-center gap-2 min-w-[180px]">
+                <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Select value={createdBy?.toString() || "all"} onValueChange={(val) => setCreatedBy(val === "all" ? undefined : parseInt(val))}>
+                  <SelectTrigger className="w-full text-sm">
+                    <SelectValue placeholder="Created by anyone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Created by anyone</SelectItem>
+                    {allUsers?.map((u) => (
+                      <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2 min-w-[180px]">
+                <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Select value={testedBy?.toString() || "all"} onValueChange={(val) => setTestedBy(val === "all" ? undefined : parseInt(val))}>
+                  <SelectTrigger className="w-full text-sm">
+                    <SelectValue placeholder="Tested by anyone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tested by anyone</SelectItem>
+                    {allUsers?.filter((u) => u.role === "tester").map((u) => (
+                      <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2 min-w-[180px]">
+                <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Select value={assignedTo?.toString() || "all"} onValueChange={(val) => setAssignedTo(val === "all" ? undefined : parseInt(val))}>
+                  <SelectTrigger className="w-full text-sm">
+                    <SelectValue placeholder="Assigned to anyone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Assigned to anyone</SelectItem>
+                    {allUsers?.map((u) => (
+                      <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

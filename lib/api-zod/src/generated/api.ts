@@ -312,6 +312,9 @@ export const TrackerListRequirementsQueryParams = zod.object({
   search: zod.coerce.string().optional(),
   mine: zod.coerce.boolean().default(trackerListRequirementsQueryMineDefault),
   projectId: zod.coerce.number().optional(),
+  createdBy: zod.coerce.number().optional(),
+  testedBy: zod.coerce.number().optional(),
+  assignedTo: zod.coerce.number().optional(),
 });
 
 export const TrackerListRequirementsResponseItem = zod.object({
