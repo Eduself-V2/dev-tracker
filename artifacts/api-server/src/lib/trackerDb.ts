@@ -28,6 +28,13 @@ export interface UserRow {
   password_reset_required: number;
 }
 
+export interface ProjectRow {
+  id: number;
+  name: string;
+  description: string | null;
+  created_at: Date;
+}
+
 export interface RequirementRow {
   id: number;
   title: string;
@@ -42,6 +49,7 @@ export interface RequirementRow {
   developer_id: number;
   tester_id: number | null;
   test_cycles: number;
+  project_id: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -49,6 +57,7 @@ export interface RequirementRow {
 export interface RequirementListRow extends RequirementRow {
   developer_name: string;
   tester_name: string | null;
+  project_name: string;
 }
 
 export interface EventRow {

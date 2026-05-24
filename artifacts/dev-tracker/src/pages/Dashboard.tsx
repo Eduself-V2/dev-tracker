@@ -1,13 +1,17 @@
-import { useTrackerStatsSummary } from "@workspace/api-client-react";
+import { useState } from "react";
+import { useTrackerStatsSummary, useTrackerListProjects } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { AlertCircle, CheckCircle2, Circle, Clock, ArrowRightCircle, ListTodo } from "lucide-react";
+import { AlertCircle, CheckCircle2, Circle, Clock, ArrowRightCircle, ListTodo, FolderKanban } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = useTrackerStatsSummary();
+  const [projectId, setProjectId] = useState<number | undefined>(undefined);
+  const { data: stats, isLoading } = useTrackerStatsSummary({ projectId });
+  const { data: projects } = useTrackerListProjects();
 
   if (isLoading) {
     return (
@@ -34,9 +38,28 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Command Station</h1>
-        <p className="text-muted-foreground">Overview of the squad's current requirements and workflow.</p>
+      <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-end">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">Command Station</h1>
+          <p className="text-muted-foreground">Overview of the squad's current requirements and workflow.</p>
+        </div>
+        <div className="flex items-center gap-2 min-w-[220px]">
+          <FolderKanban className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Select
+            value={projectId?.toString() || "all"}
+            onValueChange={(val) => setProjectId(val === "all" ? undefined : parseInt(val))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All projects</SelectItem>
+              {projects?.map((p) => (
+                <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -104,6 +127,10 @@ export default function Dashboard() {
                         <Badge variant={req.priority === 'high' ? 'destructive' : req.priority === 'medium' ? 'default' : 'secondary'}>
                           {req.priority}
                         </Badge>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <FolderKanban className="w-3 h-3" />
+                          {req.projectName}
+                        </span>
                       </div>
                     </div>
                   </Link>

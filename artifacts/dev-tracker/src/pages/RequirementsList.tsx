@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { useTrackerListRequirements, getTrackerListRequirementsQueryKey } from "@workspace/api-client-react";
+import { useTrackerListRequirements, useTrackerListProjects, getTrackerListRequirementsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth";
 import { format } from "date-fns";
-import { Search, PlusCircle, AlertCircle, Circle, Clock, CheckCircle2, ArrowRightCircle, ListTodo } from "lucide-react";
+import { Search, PlusCircle, AlertCircle, Circle, Clock, CheckCircle2, ArrowRightCircle, ListTodo, FolderKanban } from "lucide-react";
 import { TrackerListRequirementsStatus } from "@workspace/api-client-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -26,17 +27,31 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+function getInitialProjectId(): number | undefined {
+  const params = new URLSearchParams(window.location.search);
+  const val = params.get("project");
+  if (val) {
+    const n = parseInt(val);
+    return isNaN(n) ? undefined : n;
+  }
+  return undefined;
+}
+
 export default function RequirementsList() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [status, setStatus] = useState<TrackerListRequirementsStatus>("all");
   const [mine, setMine] = useState(false);
+  const [projectId, setProjectId] = useState<number | undefined>(getInitialProjectId());
+
+  const { data: projects } = useTrackerListProjects();
 
   const { data: requirements, isLoading } = useTrackerListRequirements({
     search: debouncedSearch || undefined,
     status: status !== "all" ? status : undefined,
     mine: mine ? true : undefined,
+    projectId: projectId,
   });
 
   const stageConfigs = [
@@ -82,6 +97,24 @@ export default function RequirementsList() {
             <div className="flex items-center space-x-2">
               <Switch id="mine-only" checked={mine} onCheckedChange={setMine} />
               <Label htmlFor="mine-only" className="cursor-pointer">Mine only</Label>
+            </div>
+
+            <div className="flex items-center space-x-2 min-w-[200px]">
+              <FolderKanban className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Select
+                value={projectId?.toString() || "all"}
+                onValueChange={(val) => setProjectId(val === "all" ? undefined : parseInt(val))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All projects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All projects</SelectItem>
+                  {projects?.map((p) => (
+                    <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -144,6 +177,10 @@ export default function RequirementsList() {
                         <span className="flex items-center gap-1.5">
                           <div className="w-2 h-2 rounded-full bg-secondary-foreground/40"></div>
                           QA: <span className="font-medium text-foreground">{req.testerName || "Unassigned"}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <FolderKanban className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="font-medium text-foreground">{req.projectName}</span>
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" />

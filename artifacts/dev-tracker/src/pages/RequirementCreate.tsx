@@ -6,10 +6,12 @@ import * as z from "zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   useTrackerCreateRequirement, 
-  useTrackerListUsers, 
+  useTrackerListUsers,
+  useTrackerListProjects,
   getTrackerListRequirementsQueryKey,
   getTrackerListUsersQueryKey,
-  getTrackerStatsSummaryQueryKey
+  getTrackerStatsSummaryQueryKey,
+  getTrackerListProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +29,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high"] as const),
   testerId: z.coerce.number().optional().nullable(),
+  projectId: z.coerce.number().min(1, "Project is required"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -43,6 +46,8 @@ export default function RequirementCreate() {
       enabled: user?.role === "admin"
     }
   });
+
+  const { data: projects } = useTrackerListProjects();
 
   const createMutation = useTrackerCreateRequirement({
     mutation: {
@@ -65,6 +70,7 @@ export default function RequirementCreate() {
       description: "",
       priority: "medium",
       testerId: null,
+      projectId: undefined,
     },
   });
 
@@ -89,6 +95,7 @@ export default function RequirementCreate() {
         description: data.description,
         priority: data.priority as CreateRequirementPriority,
         testerId: data.testerId || undefined,
+        projectId: data.projectId,
       } 
     });
   };
@@ -144,6 +151,29 @@ export default function RequirementCreate() {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="projectId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Project</FormLabel>
+                      <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString()}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a project" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {projects?.map((p) => (
+                            <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="priority"

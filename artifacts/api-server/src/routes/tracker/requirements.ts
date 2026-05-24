@@ -58,6 +58,8 @@ function serializeRequirementListRow(r: RequirementListRow) {
     developerName: r.developer_name,
     testerId: r.tester_id,
     testerName: r.tester_name,
+    projectId: r.project_id,
+    projectName: r.project_name,
     testCycles: r.test_cycles,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
@@ -91,10 +93,11 @@ function serializeComment(c: CommentRow) {
 }
 
 const REQ_LIST_SQL = `
-  SELECT r.*, d.name AS developer_name, t.name AS tester_name
+  SELECT r.*, d.name AS developer_name, t.name AS tester_name, p.name AS project_name
   FROM requirements r
   JOIN users d ON d.id = r.developer_id
   LEFT JOIN users t ON t.id = r.tester_id
+  JOIN projects p ON p.id = r.project_id
 `;
 
 router.get("/", async (req, res, next) => {
@@ -103,6 +106,10 @@ router.get("/", async (req, res, next) => {
     const conditions: string[] = [];
     const values: unknown[] = [];
 
+    if (params.projectId) {
+      conditions.push("r.project_id = ?");
+      values.push(params.projectId);
+    }
     if (params.status && params.status !== "all") {
       conditions.push("r.status = ?");
       values.push(params.status);
@@ -157,13 +164,14 @@ router.post("/", async (req, res, next) => {
     }
 
     const [insertResult] = await trackerPool.query(
-      "INSERT INTO requirements (title, description, priority, developer_id, tester_id) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO requirements (title, description, priority, developer_id, tester_id, project_id) VALUES (?, ?, ?, ?, ?, ?)",
       [
         body.title,
         body.description ?? null,
         body.priority ?? "medium",
         me.id,
         body.testerId ?? null,
+        body.projectId,
       ],
     );
     const insertId = (insertResult as { insertId: number }).insertId;

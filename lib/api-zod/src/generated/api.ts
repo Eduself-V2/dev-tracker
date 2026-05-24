@@ -311,6 +311,7 @@ export const TrackerListRequirementsQueryParams = zod.object({
     .default(trackerListRequirementsQueryStatusDefault),
   search: zod.coerce.string().optional(),
   mine: zod.coerce.boolean().default(trackerListRequirementsQueryMineDefault),
+  projectId: zod.coerce.number().optional(),
 });
 
 export const TrackerListRequirementsResponseItem = zod.object({
@@ -329,6 +330,8 @@ export const TrackerListRequirementsResponseItem = zod.object({
   developerName: zod.string(),
   testerId: zod.number().nullish(),
   testerName: zod.string().nullish(),
+  projectId: zod.number(),
+  projectName: zod.string(),
   testCycles: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -351,6 +354,7 @@ export const TrackerCreateRequirementBody = zod.object({
     .enum(["low", "medium", "high"])
     .default(trackerCreateRequirementBodyPriorityDefault),
   testerId: zod.number().nullish(),
+  projectId: zod.number(),
 });
 
 /**
@@ -377,6 +381,8 @@ export const TrackerGetRequirementResponse = zod.object({
     developerName: zod.string(),
     testerId: zod.number().nullish(),
     testerName: zod.string().nullish(),
+    projectId: zod.number(),
+    projectName: zod.string(),
     testCycles: zod.number(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
@@ -425,6 +431,7 @@ export const TrackerUpdateRequirementBody = zod.object({
   description: zod.string().nullish(),
   priority: zod.enum(["low", "medium", "high"]).optional(),
   testerId: zod.number().nullish(),
+  projectId: zod.number().optional(),
 });
 
 export const TrackerUpdateRequirementResponse = zod.object({
@@ -443,6 +450,8 @@ export const TrackerUpdateRequirementResponse = zod.object({
   developerName: zod.string(),
   testerId: zod.number().nullish(),
   testerName: zod.string().nullish(),
+  projectId: zod.number(),
+  projectName: zod.string(),
   testCycles: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -483,6 +492,8 @@ export const TrackerTransitionRequirementResponse = zod.object({
     developerName: zod.string(),
     testerId: zod.number().nullish(),
     testerName: zod.string().nullish(),
+    projectId: zod.number(),
+    projectName: zod.string(),
     testCycles: zod.number(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
@@ -529,6 +540,10 @@ export const TrackerAddCommentBody = zod.object({
 /**
  * @summary Tracker dashboard summary
  */
+export const TrackerStatsSummaryQueryParams = zod.object({
+  projectId: zod.coerce.number().optional(),
+});
+
 export const TrackerStatsSummaryResponse = zod.object({
   total: zod.number(),
   open: zod.number(),
@@ -554,9 +569,76 @@ export const TrackerStatsSummaryResponse = zod.object({
       developerName: zod.string(),
       testerId: zod.number().nullish(),
       testerName: zod.string().nullish(),
+      projectId: zod.number(),
+      projectName: zod.string(),
       testCycles: zod.number(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
   ),
+});
+
+/**
+ * @summary List all projects (admin only)
+ */
+export const TrackerListProjectsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const TrackerListProjectsResponse = zod.array(
+  TrackerListProjectsResponseItem,
+);
+
+/**
+ * @summary Create a new project (admin only)
+ */
+export const trackerCreateProjectBodyNameMax = 120;
+
+export const TrackerCreateProjectBody = zod.object({
+  name: zod.string().min(1).max(trackerCreateProjectBodyNameMax),
+  description: zod.string().nullish(),
+});
+
+/**
+ * @summary Get a project by id (admin only)
+ */
+export const TrackerGetProjectParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const TrackerGetProjectResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a project (admin only)
+ */
+export const TrackerUpdateProjectParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const trackerUpdateProjectBodyNameMax = 120;
+
+export const TrackerUpdateProjectBody = zod.object({
+  name: zod.string().min(1).max(trackerUpdateProjectBodyNameMax).optional(),
+  description: zod.string().nullish(),
+});
+
+export const TrackerUpdateProjectResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a project (admin only)
+ */
+export const TrackerDeleteProjectParams = zod.object({
+  id: zod.coerce.number(),
 });

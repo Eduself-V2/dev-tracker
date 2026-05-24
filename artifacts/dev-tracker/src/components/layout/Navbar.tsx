@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Activity, LayoutDashboard, ListTodo, PlusCircle, Users } from "lucide-react";
+import { Activity, LayoutDashboard, ListTodo, PlusCircle, Users, FolderKanban } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function Navbar() {
@@ -41,6 +41,7 @@ export function Navbar() {
     { href: "/", label: "Dashboard", icon: LayoutDashboard, show: true },
     { href: "/requirements", label: "Requirements", icon: ListTodo, show: true },
     { href: "/requirements/new", label: "New Requirement", icon: PlusCircle, show: user.role === "admin" || user.role === "developer" },
+    { href: "/projects", label: "Projects", icon: FolderKanban, show: user.role === "admin" },
     { href: "/users", label: "Users", icon: Users, show: user.role === "admin" },
   ];
 

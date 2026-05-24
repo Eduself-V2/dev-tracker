@@ -11,4 +11,5 @@ export type TrackerListRequirementsParams = {
   status?: TrackerListRequirementsStatus;
   search?: string;
   mine?: boolean;
+  projectId?: number;
 };

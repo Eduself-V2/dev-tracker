@@ -7,6 +7,7 @@
  */
 
 export * from "./createComment";
+export * from "./createProject";
 export * from "./createRequirement";
 export * from "./createRequirementPriority";
 export * from "./createTask";
@@ -17,6 +18,7 @@ export * from "./healthStatus";
 export * from "./listTasksParams";
 export * from "./listTasksPriority";
 export * from "./listTasksStatus";
+export * from "./project";
 export * from "./requirement";
 export * from "./requirementComment";
 export * from "./requirementDetail";
@@ -33,10 +35,12 @@ export * from "./trackerListRequirementsParams";
 export * from "./trackerListRequirementsStatus";
 export * from "./trackerLogin";
 export * from "./trackerStatsSummary";
+export * from "./trackerStatsSummaryParams";
 export * from "./trackerUser";
 export * from "./trackerUserRole";
 export * from "./transitionRequirement";
 export * from "./transitionRequirementToStatus";
+export * from "./updateProject";
 export * from "./updateRequirement";
 export * from "./updateRequirementPriority";
 export * from "./updateTask";

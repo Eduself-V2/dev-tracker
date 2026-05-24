@@ -18,11 +18,13 @@ import type {
 
 import type {
   CreateComment,
+  CreateProject,
   CreateRequirement,
   CreateTask,
   CreateTrackerUser,
   HealthStatus,
   ListTasksParams,
+  Project,
   Requirement,
   RequirementComment,
   RequirementDetail,
@@ -32,8 +34,10 @@ import type {
   TrackerListRequirementsParams,
   TrackerLogin,
   TrackerStatsSummary,
+  TrackerStatsSummaryParams,
   TrackerUser,
   TransitionRequirement,
+  UpdateProject,
   UpdateRequirement,
   UpdateTask,
   UpdateTrackerUser,
@@ -1977,41 +1981,63 @@ export const useTrackerAddComment = <
 /**
  * @summary Tracker dashboard summary
  */
-export const getTrackerStatsSummaryUrl = () => {
-  return `/api/tracker/stats/summary`;
+export const getTrackerStatsSummaryUrl = (
+  params?: TrackerStatsSummaryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/tracker/stats/summary?${stringifiedParams}`
+    : `/api/tracker/stats/summary`;
 };
 
 export const trackerStatsSummary = async (
+  params?: TrackerStatsSummaryParams,
   options?: RequestInit,
 ): Promise<TrackerStatsSummary> => {
-  return customFetch<TrackerStatsSummary>(getTrackerStatsSummaryUrl(), {
+  return customFetch<TrackerStatsSummary>(getTrackerStatsSummaryUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getTrackerStatsSummaryQueryKey = () => {
-  return [`/api/tracker/stats/summary`] as const;
+export const getTrackerStatsSummaryQueryKey = (
+  params?: TrackerStatsSummaryParams,
+) => {
+  return [`/api/tracker/stats/summary`, ...(params ? [params] : [])] as const;
 };
 
 export const getTrackerStatsSummaryQueryOptions = <
   TData = Awaited<ReturnType<typeof trackerStatsSummary>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof trackerStatsSummary>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: TrackerStatsSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof trackerStatsSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getTrackerStatsSummaryQueryKey();
+  const queryKey =
+    queryOptions?.queryKey ?? getTrackerStatsSummaryQueryKey(params);
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof trackerStatsSummary>>
-  > = ({ signal }) => trackerStatsSummary({ signal, ...requestOptions });
+  > = ({ signal }) =>
+    trackerStatsSummary(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof trackerStatsSummary>>,
@@ -2032,15 +2058,18 @@ export type TrackerStatsSummaryQueryError = ErrorType<unknown>;
 export function useTrackerStatsSummary<
   TData = Awaited<ReturnType<typeof trackerStatsSummary>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof trackerStatsSummary>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getTrackerStatsSummaryQueryOptions(options);
+>(
+  params?: TrackerStatsSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof trackerStatsSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getTrackerStatsSummaryQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -2048,3 +2077,422 @@ export function useTrackerStatsSummary<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all projects (admin only)
+ */
+export const getTrackerListProjectsUrl = () => {
+  return `/api/tracker/projects`;
+};
+
+export const trackerListProjects = async (
+  options?: RequestInit,
+): Promise<Project[]> => {
+  return customFetch<Project[]>(getTrackerListProjectsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getTrackerListProjectsQueryKey = () => {
+  return [`/api/tracker/projects`] as const;
+};
+
+export const getTrackerListProjectsQueryOptions = <
+  TData = Awaited<ReturnType<typeof trackerListProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof trackerListProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getTrackerListProjectsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof trackerListProjects>>
+  > = ({ signal }) => trackerListProjects({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof trackerListProjects>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type TrackerListProjectsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof trackerListProjects>>
+>;
+export type TrackerListProjectsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all projects (admin only)
+ */
+
+export function useTrackerListProjects<
+  TData = Awaited<ReturnType<typeof trackerListProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof trackerListProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getTrackerListProjectsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new project (admin only)
+ */
+export const getTrackerCreateProjectUrl = () => {
+  return `/api/tracker/projects`;
+};
+
+export const trackerCreateProject = async (
+  createProject: CreateProject,
+  options?: RequestInit,
+): Promise<Project> => {
+  return customFetch<Project>(getTrackerCreateProjectUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProject),
+  });
+};
+
+export const getTrackerCreateProjectMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerCreateProject>>,
+    TError,
+    { data: BodyType<CreateProject> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerCreateProject>>,
+  TError,
+  { data: BodyType<CreateProject> },
+  TContext
+> => {
+  const mutationKey = ["trackerCreateProject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerCreateProject>>,
+    { data: BodyType<CreateProject> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return trackerCreateProject(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerCreateProjectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerCreateProject>>
+>;
+export type TrackerCreateProjectMutationBody = BodyType<CreateProject>;
+export type TrackerCreateProjectMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new project (admin only)
+ */
+export const useTrackerCreateProject = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerCreateProject>>,
+    TError,
+    { data: BodyType<CreateProject> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerCreateProject>>,
+  TError,
+  { data: BodyType<CreateProject> },
+  TContext
+> => {
+  return useMutation(getTrackerCreateProjectMutationOptions(options));
+};
+
+/**
+ * @summary Get a project by id (admin only)
+ */
+export const getTrackerGetProjectUrl = (id: number) => {
+  return `/api/tracker/projects/${id}`;
+};
+
+export const trackerGetProject = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Project> => {
+  return customFetch<Project>(getTrackerGetProjectUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getTrackerGetProjectQueryKey = (id: number) => {
+  return [`/api/tracker/projects/${id}`] as const;
+};
+
+export const getTrackerGetProjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof trackerGetProject>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof trackerGetProject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getTrackerGetProjectQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof trackerGetProject>>
+  > = ({ signal }) => trackerGetProject(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof trackerGetProject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type TrackerGetProjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof trackerGetProject>>
+>;
+export type TrackerGetProjectQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get a project by id (admin only)
+ */
+
+export function useTrackerGetProject<
+  TData = Awaited<ReturnType<typeof trackerGetProject>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof trackerGetProject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getTrackerGetProjectQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a project (admin only)
+ */
+export const getTrackerUpdateProjectUrl = (id: number) => {
+  return `/api/tracker/projects/${id}`;
+};
+
+export const trackerUpdateProject = async (
+  id: number,
+  updateProject: UpdateProject,
+  options?: RequestInit,
+): Promise<Project> => {
+  return customFetch<Project>(getTrackerUpdateProjectUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateProject),
+  });
+};
+
+export const getTrackerUpdateProjectMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerUpdateProject>>,
+    TError,
+    { id: number; data: BodyType<UpdateProject> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerUpdateProject>>,
+  TError,
+  { id: number; data: BodyType<UpdateProject> },
+  TContext
+> => {
+  const mutationKey = ["trackerUpdateProject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerUpdateProject>>,
+    { id: number; data: BodyType<UpdateProject> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return trackerUpdateProject(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerUpdateProjectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerUpdateProject>>
+>;
+export type TrackerUpdateProjectMutationBody = BodyType<UpdateProject>;
+export type TrackerUpdateProjectMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a project (admin only)
+ */
+export const useTrackerUpdateProject = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerUpdateProject>>,
+    TError,
+    { id: number; data: BodyType<UpdateProject> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerUpdateProject>>,
+  TError,
+  { id: number; data: BodyType<UpdateProject> },
+  TContext
+> => {
+  return useMutation(getTrackerUpdateProjectMutationOptions(options));
+};
+
+/**
+ * @summary Delete a project (admin only)
+ */
+export const getTrackerDeleteProjectUrl = (id: number) => {
+  return `/api/tracker/projects/${id}`;
+};
+
+export const trackerDeleteProject = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getTrackerDeleteProjectUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getTrackerDeleteProjectMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerDeleteProject>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerDeleteProject>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["trackerDeleteProject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerDeleteProject>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return trackerDeleteProject(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerDeleteProjectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerDeleteProject>>
+>;
+
+export type TrackerDeleteProjectMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a project (admin only)
+ */
+export const useTrackerDeleteProject = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerDeleteProject>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerDeleteProject>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getTrackerDeleteProjectMutationOptions(options));
+};

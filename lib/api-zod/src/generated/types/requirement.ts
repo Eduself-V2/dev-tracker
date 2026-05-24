@@ -18,6 +18,8 @@ export interface Requirement {
   developerName: string;
   testerId?: number | null;
   testerName?: string | null;
+  projectId: number;
+  projectName: string;
   testCycles: number;
   createdAt: Date;
   updatedAt: Date;

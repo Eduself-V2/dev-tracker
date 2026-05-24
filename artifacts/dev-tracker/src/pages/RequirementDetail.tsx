@@ -30,6 +30,7 @@ import {
   AlertCircle,
   CheckCircle2,
   PlusCircle,
+  FolderKanban,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -199,6 +200,12 @@ export default function RequirementDetail() {
           <span className="flex items-center gap-1.5">
             <Activity className="w-4 h-4" />
             {requirement.testCycles} cycles
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Link href={`/requirements?project=${requirement.projectId}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+              <FolderKanban className="w-4 h-4" />
+              {requirement.projectName}
+            </Link>
           </span>
           <span className="flex items-center gap-1.5">
             <Clock className="w-4 h-4" />

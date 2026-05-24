@@ -204,6 +204,8 @@ export interface Requirement {
   developerName: string;
   testerId?: number | null;
   testerName?: string | null;
+  projectId: number;
+  projectName: string;
   testCycles: number;
   createdAt: string;
   updatedAt: string;
@@ -247,6 +249,31 @@ export interface RequirementDetail {
   comments: RequirementComment[];
 }
 
+export interface Project {
+  id: number;
+  name: string;
+  description?: string | null;
+  createdAt: string;
+}
+
+export interface CreateProject {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name: string;
+  description?: string | null;
+}
+
+export interface UpdateProject {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name?: string;
+  description?: string | null;
+}
+
 export type CreateRequirementPriority =
   (typeof CreateRequirementPriority)[keyof typeof CreateRequirementPriority];
 
@@ -265,6 +292,7 @@ export interface CreateRequirement {
   description?: string | null;
   priority?: CreateRequirementPriority;
   testerId?: number | null;
+  projectId: number;
 }
 
 export type UpdateRequirementPriority =
@@ -285,6 +313,7 @@ export interface UpdateRequirement {
   description?: string | null;
   priority?: UpdateRequirementPriority;
   testerId?: number | null;
+  projectId?: number;
 }
 
 export type TransitionRequirementToStatus =
@@ -351,6 +380,7 @@ export type TrackerListRequirementsParams = {
   status?: TrackerListRequirementsStatus;
   search?: string;
   mine?: boolean;
+  projectId?: number;
 };
 
 export type TrackerListRequirementsStatus =
@@ -364,3 +394,7 @@ export const TrackerListRequirementsStatus = {
   confirmed: "confirmed",
   pushed_to_production: "pushed_to_production",
 } as const;
+
+export type TrackerStatsSummaryParams = {
+  projectId?: number;
+};

@@ -6,8 +6,13 @@ const router: IRouter = Router();
 router.get("/summary", async (req, res, next) => {
   try {
     const me = req.trackerUser!;
+    const projectId = req.query.projectId;
+    const projectFilter = projectId ? "WHERE project_id = ?" : "";
+    const projectValues = projectId ? [projectId] : [];
+
     const [counts] = await trackerPool.query(
-      `SELECT status, COUNT(*) AS c FROM requirements GROUP BY status`,
+      `SELECT status, COUNT(*) AS c FROM requirements ${projectFilter} GROUP BY status`,
+      projectValues,
     );
     const map: Record<string, number> = {};
     for (const row of counts as Array<{ status: string; c: number }>) {
@@ -16,16 +21,19 @@ router.get("/summary", async (req, res, next) => {
     const total = Object.values(map).reduce((a, b) => a + b, 0);
 
     let myOpen = 0;
+    const projectWhere = projectId ? " AND project_id = ?" : "";
+    const myOpenValues = projectId ? [me.id, projectId] : [me.id];
+
     if (me.role === "developer") {
       const [r] = await trackerPool.query(
-        `SELECT COUNT(*) AS c FROM requirements WHERE developer_id = ? AND status NOT IN ('pushed_to_production')`,
-        [me.id],
+        `SELECT COUNT(*) AS c FROM requirements WHERE developer_id = ? AND status NOT IN ('pushed_to_production')${projectWhere}`,
+        myOpenValues,
       );
       myOpen = Number((r as Array<{ c: number }>)[0]?.c ?? 0);
     } else if (me.role === "tester") {
       const [r] = await trackerPool.query(
-        `SELECT COUNT(*) AS c FROM requirements WHERE tester_id = ? AND status = 'in_testing'`,
-        [me.id],
+        `SELECT COUNT(*) AS c FROM requirements WHERE tester_id = ? AND status = 'in_testing'${projectWhere}`,
+        myOpenValues,
       );
       myOpen = Number((r as Array<{ c: number }>)[0]?.c ?? 0);
     } else {
@@ -37,8 +45,10 @@ router.get("/summary", async (req, res, next) => {
        FROM requirements r
        JOIN users d ON d.id = r.developer_id
        LEFT JOIN users t ON t.id = r.tester_id
+       ${projectFilter}
        ORDER BY r.updated_at DESC
        LIMIT 8`,
+      projectValues,
     );
 
     res.json({

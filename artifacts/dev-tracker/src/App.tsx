@@ -14,6 +14,7 @@ import RequirementsList from "@/pages/RequirementsList";
 import RequirementCreate from "@/pages/RequirementCreate";
 import RequirementDetail from "@/pages/RequirementDetail";
 import Users from "@/pages/Users";
+import Projects from "@/pages/Projects";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ function Router() {
         <Route path="/requirements/new" component={RequirementCreate} />
         <Route path="/requirements/:id" component={RequirementDetail} />
         <Route path="/users" component={Users} />
+        <Route path="/projects" component={Projects} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
