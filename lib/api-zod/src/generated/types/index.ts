@@ -24,6 +24,7 @@ export * from "./requirementEvent";
 export * from "./requirementEventKind";
 export * from "./requirementPriority";
 export * from "./requirementStatus";
+export * from "./resetTrackerPassword";
 export * from "./statsSummary";
 export * from "./statsSummaryByPriority";
 export * from "./task";

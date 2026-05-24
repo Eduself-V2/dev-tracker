@@ -108,10 +108,9 @@ export default function Login() {
             </Form>
           </CardContent>
           <CardFooter className="flex justify-center border-t bg-muted/20 p-4">
-            <div className="text-sm text-muted-foreground flex flex-col items-center gap-1">
-              <span>Default Admin Credentials:</span>
-              <code className="bg-muted px-2 py-1 rounded font-mono text-xs text-foreground">admin / admin123</code>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Contact your administrator if you have trouble signing in.
+            </p>
           </CardFooter>
         </Card>
       </div>

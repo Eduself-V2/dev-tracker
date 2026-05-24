@@ -18,7 +18,7 @@ async function main() {
   }
   const hash = await bcrypt.hash(password, 10);
   await trackerPool.query(
-    "INSERT INTO users (name, email, mobile, username, password_hash, role) VALUES (?, ?, NULL, ?, ?, 'admin')",
+    "INSERT INTO users (name, email, mobile, username, password_hash, role, password_reset_required) VALUES (?, ?, NULL, ?, ?, 'admin', 1)",
     [name, email, username, hash],
   );
   console.log(`Seeded admin user: username=${username} password=${password}`);

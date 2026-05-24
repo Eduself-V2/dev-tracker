@@ -26,6 +26,7 @@ import type {
   Requirement,
   RequirementComment,
   RequirementDetail,
+  ResetTrackerPassword,
   StatsSummary,
   Task,
   TrackerListRequirementsParams,
@@ -1015,6 +1016,92 @@ export function useTrackerMe<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Reset own password
+ */
+export const getTrackerResetPasswordUrl = () => {
+  return `/api/tracker/auth/reset-password`;
+};
+
+export const trackerResetPassword = async (
+  resetTrackerPassword: ResetTrackerPassword,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getTrackerResetPasswordUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(resetTrackerPassword),
+  });
+};
+
+export const getTrackerResetPasswordMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerResetPassword>>,
+    TError,
+    { data: BodyType<ResetTrackerPassword> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerResetPassword>>,
+  TError,
+  { data: BodyType<ResetTrackerPassword> },
+  TContext
+> => {
+  const mutationKey = ["trackerResetPassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerResetPassword>>,
+    { data: BodyType<ResetTrackerPassword> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return trackerResetPassword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerResetPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerResetPassword>>
+>;
+export type TrackerResetPasswordMutationBody = BodyType<ResetTrackerPassword>;
+export type TrackerResetPasswordMutationError = ErrorType<void>;
+
+/**
+ * @summary Reset own password
+ */
+export const useTrackerResetPassword = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerResetPassword>>,
+    TError,
+    { data: BodyType<ResetTrackerPassword> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerResetPassword>>,
+  TError,
+  { data: BodyType<ResetTrackerPassword> },
+  TContext
+> => {
+  return useMutation(getTrackerResetPasswordMutationOptions(options));
+};
 
 /**
  * @summary List all users (admin only)

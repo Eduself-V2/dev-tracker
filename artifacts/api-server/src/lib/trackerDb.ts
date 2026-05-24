@@ -25,6 +25,7 @@ export interface UserRow {
   password_hash: string;
   role: TrackerRole;
   created_at: Date;
+  password_reset_required: number;
 }
 
 export interface RequirementRow {

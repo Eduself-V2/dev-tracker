@@ -15,4 +15,5 @@ export interface TrackerUser {
   username: string;
   role: TrackerUserRole;
   createdAt: Date;
+  passwordResetRequired: boolean;
 }

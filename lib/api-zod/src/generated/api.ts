@@ -179,6 +179,7 @@ export const TrackerLoginResponse = zod.object({
   username: zod.string(),
   role: zod.enum(["admin", "developer", "tester"]),
   createdAt: zod.coerce.date(),
+  passwordResetRequired: zod.boolean(),
 });
 
 /**
@@ -192,6 +193,20 @@ export const TrackerMeResponse = zod.object({
   username: zod.string(),
   role: zod.enum(["admin", "developer", "tester"]),
   createdAt: zod.coerce.date(),
+  passwordResetRequired: zod.boolean(),
+});
+
+/**
+ * @summary Reset own password
+ */
+export const trackerResetPasswordBodyPasswordMin = 6;
+export const trackerResetPasswordBodyPasswordMax = 200;
+
+export const TrackerResetPasswordBody = zod.object({
+  password: zod
+    .string()
+    .min(trackerResetPasswordBodyPasswordMin)
+    .max(trackerResetPasswordBodyPasswordMax),
 });
 
 /**
@@ -205,6 +220,7 @@ export const TrackerListUsersResponseItem = zod.object({
   username: zod.string(),
   role: zod.enum(["admin", "developer", "tester"]),
   createdAt: zod.coerce.date(),
+  passwordResetRequired: zod.boolean(),
 });
 export const TrackerListUsersResponse = zod.array(TrackerListUsersResponseItem);
 
@@ -266,6 +282,7 @@ export const TrackerUpdateUserResponse = zod.object({
   username: zod.string(),
   role: zod.enum(["admin", "developer", "tester"]),
   createdAt: zod.coerce.date(),
+  passwordResetRequired: zod.boolean(),
 });
 
 /**

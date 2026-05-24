@@ -222,6 +222,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TrackerUser"
+  /tracker/auth/reset-password:
+    post:
+      operationId: trackerResetPassword
+      tags: [tracker-auth]
+      summary: Reset own password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetTrackerPassword"
+      responses:
+        "204":
+          description: Password reset successfully
+        "400":
+          description: Invalid password
+        "401":
+          description: Unauthorized
   /tracker/users:
     get:
       operationId: trackerListUsers
@@ -557,7 +575,9 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, name, email, username, role, createdAt]
+        passwordResetRequired:
+          type: boolean
+      required: [id, name, email, username, role, createdAt, passwordResetRequired]
     TrackerLogin:
       type: object
       properties:
@@ -568,6 +588,14 @@ components:
           type: string
           minLength: 1
       required: [username, password]
+    ResetTrackerPassword:
+      type: object
+      properties:
+        password:
+          type: string
+          minLength: 6
+          maxLength: 200
+      required: [password]
     CreateTrackerUser:
       type: object
       properties:

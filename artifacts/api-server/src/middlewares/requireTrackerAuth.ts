@@ -18,6 +18,7 @@ declare global {
         username: string;
         role: TrackerRole;
         createdAt: Date;
+        passwordResetRequired: boolean;
       };
     }
   }
@@ -35,7 +36,7 @@ export async function loadTrackerUser(
       return;
     }
     const [rows] = await trackerPool.query(
-      "SELECT id, name, email, mobile, username, role, created_at FROM users WHERE id = ?",
+      "SELECT id, name, email, mobile, username, role, created_at, password_reset_required FROM users WHERE id = ?",
       [userId],
     );
     const user = (rows as Array<Omit<UserRow, "password_hash">>)[0];
@@ -48,6 +49,7 @@ export async function loadTrackerUser(
         username: user.username,
         role: user.role,
         createdAt: user.created_at,
+        passwordResetRequired: Boolean(user.password_reset_required),
       };
     }
     next();

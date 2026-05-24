@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 
 // Lazy loading or direct imports for pages
 import Login from "@/pages/Login";
+import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
 import RequirementsList from "@/pages/RequirementsList";
 import RequirementCreate from "@/pages/RequirementCreate";
@@ -21,6 +22,7 @@ function Router() {
     <AppLayout>
       <Switch>
         <Route path="/login" component={Login} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/" component={Dashboard} />
         <Route path="/requirements" component={RequirementsList} />
         <Route path="/requirements/new" component={RequirementCreate} />

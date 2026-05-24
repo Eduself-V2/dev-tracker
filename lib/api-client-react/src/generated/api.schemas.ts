@@ -101,12 +101,21 @@ export interface TrackerUser {
   username: string;
   role: TrackerUserRole;
   createdAt: string;
+  passwordResetRequired: boolean;
 }
 
 export interface TrackerLogin {
   /** @minLength 1 */
   username: string;
   /** @minLength 1 */
+  password: string;
+}
+
+export interface ResetTrackerPassword {
+  /**
+   * @minLength 6
+   * @maxLength 200
+   */
   password: string;
 }
 

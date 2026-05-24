@@ -10,7 +10,7 @@ router.post("/login", async (req, res, next) => {
   try {
     const body = TrackerLoginBody.parse(req.body);
     const [rows] = await trackerPool.query(
-      "SELECT id, name, email, mobile, username, password_hash, role, created_at FROM users WHERE username = ?",
+      "SELECT id, name, email, mobile, username, password_hash, role, created_at, password_reset_required FROM users WHERE username = ?",
       [body.username],
     );
     const user = (rows as UserRow[])[0];
@@ -37,6 +37,7 @@ router.post("/login", async (req, res, next) => {
         username: user.username,
         role: user.role,
         createdAt: user.created_at.toISOString(),
+        passwordResetRequired: Boolean(user.password_reset_required),
       });
     });
   } catch (err) {
@@ -65,7 +66,26 @@ router.get("/me", requireTrackerAuth, (req, res) => {
     username: u.username,
     role: u.role,
     createdAt: u.createdAt.toISOString(),
+    passwordResetRequired: u.passwordResetRequired,
   });
+});
+
+router.post("/reset-password", requireTrackerAuth, async (req, res, next) => {
+  try {
+    const { password } = req.body;
+    if (!password || typeof password !== "string" || password.length < 6) {
+      res.status(400).json({ error: "Password must be at least 6 characters" });
+      return;
+    }
+    const hash = await bcrypt.hash(password, 10);
+    await trackerPool.query(
+      "UPDATE users SET password_hash = ?, password_reset_required = 0 WHERE id = ?",
+      [hash, req.trackerUser!.id],
+    );
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

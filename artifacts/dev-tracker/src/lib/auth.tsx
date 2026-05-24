@@ -25,14 +25,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    if (!isLoading) {
-      if (isError || !user) {
-        if (location !== "/login") {
-          setLocation("/login");
-        }
-      } else if (location === "/login") {
-        setLocation("/");
+    if (isLoading) return;
+
+    if (isError || !user) {
+      if (location !== "/login") {
+        setLocation("/login");
       }
+      return;
+    }
+
+    if (user.passwordResetRequired) {
+      if (location !== "/reset-password") {
+        setLocation("/reset-password");
+      }
+      return;
+    }
+
+    if (location === "/login" || location === "/reset-password") {
+      setLocation("/");
     }
   }, [isLoading, isError, user, location, setLocation]);
 
