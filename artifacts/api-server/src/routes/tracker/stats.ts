@@ -7,12 +7,15 @@ router.get("/summary", async (req, res, next) => {
   try {
     const me = req.trackerUser!;
     const projectId = req.query.projectId;
-    const projectFilter = projectId ? "WHERE project_id = ?" : "";
+    const mineFilter = me.role === "admin" ? "" : "assignee_id = ? AND ";
+    const mineValue = me.role === "admin" ? [] : [me.id];
+    const projectFilter = projectId ? "project_id = ? AND " : "";
     const projectValues = projectId ? [projectId] : [];
+    const whereValues = [...mineValue, ...projectValues];
 
     const [counts] = await trackerPool.query(
-      `SELECT status, COUNT(*) AS c FROM requirements ${projectFilter} GROUP BY status`,
-      projectValues,
+      `SELECT status, COUNT(*) AS c FROM requirements WHERE ${mineFilter}${projectFilter}1=1 GROUP BY status`,
+      whereValues,
     );
     const map: Record<string, number> = {};
     for (const row of counts as Array<{ status: string; c: number }>) {
@@ -21,34 +24,36 @@ router.get("/summary", async (req, res, next) => {
     const total = Object.values(map).reduce((a, b) => a + b, 0);
 
     let myOpen = 0;
-    const projectWhere = projectId ? " AND project_id = ?" : "";
-    const myOpenValues = projectId ? [me.id, projectId] : [me.id];
+    const myOpenMine = me.role === "admin" ? "" : "assignee_id = ? AND ";
+    const myOpenValues = me.role === "admin" ? projectValues : [me.id, ...projectValues];
 
-    if (me.role === "developer") {
-      const [r] = await trackerPool.query(
-        `SELECT COUNT(*) AS c FROM requirements WHERE developer_id = ? AND status NOT IN ('pushed_to_production')${projectWhere}`,
-        myOpenValues,
-      );
-      myOpen = Number((r as Array<{ c: number }>)[0]?.c ?? 0);
-    } else if (me.role === "tester") {
-      const [r] = await trackerPool.query(
-        `SELECT COUNT(*) AS c FROM requirements WHERE tester_id = ? AND status = 'in_testing'${projectWhere}`,
-        myOpenValues,
-      );
-      myOpen = Number((r as Array<{ c: number }>)[0]?.c ?? 0);
-    } else {
+    if (me.role === "admin") {
       myOpen = total - (map.pushed_to_production ?? 0);
+    } else {
+      const [r] = await trackerPool.query(
+        `SELECT COUNT(*) AS c FROM requirements WHERE ${myOpenMine}${projectFilter}status NOT IN ('pushed_to_production')`,
+        myOpenValues,
+      );
+      myOpen = Number((r as Array<{ c: number }>)[0]?.c ?? 0);
     }
 
+    const recentProject = projectId ? " AND r.project_id = ?" : "";
+    const recentMine = me.role === "admin" ? "" : " AND r.assignee_id = ?";
+    const recentValues = [
+      ...(projectId ? [projectId] : []),
+      ...(me.role === "admin" ? [] : [me.id]),
+    ];
+
     const [recentRows] = await trackerPool.query(
-      `SELECT r.*, d.name AS developer_name, t.name AS tester_name
+      `SELECT r.*, d.name AS developer_name, t.name AS tester_name, a.name AS assignee_name
        FROM requirements r
        JOIN users d ON d.id = r.developer_id
        LEFT JOIN users t ON t.id = r.tester_id
-       ${projectFilter}
+       LEFT JOIN users a ON a.id = r.assignee_id
+       WHERE 1=1${recentProject}${recentMine}
        ORDER BY r.updated_at DESC
        LIMIT 8`,
-      projectValues,
+      recentValues,
     );
 
     res.json({
@@ -69,6 +74,8 @@ router.get("/summary", async (req, res, next) => {
         developerName: r.developer_name,
         testerId: r.tester_id,
         testerName: r.tester_name,
+        assigneeId: r.assignee_id,
+        assigneeName: r.assignee_name,
         testCycles: r.test_cycles,
         createdAt: r.created_at.toISOString(),
         updatedAt: r.updated_at.toISOString(),

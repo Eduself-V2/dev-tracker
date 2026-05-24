@@ -68,7 +68,9 @@ export default function RequirementsList() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Requirements</h1>
-          <p className="text-muted-foreground">Track and manage all development requirements.</p>
+          <p className="text-muted-foreground">
+            {user?.role === "admin" ? "Track and manage all development requirements." : "View your assigned requirements."}
+          </p>
         </div>
         {(user?.role === "developer" || user?.role === "admin") && (
           <Link href="/requirements/new">
@@ -96,7 +98,9 @@ export default function RequirementsList() {
             
             <div className="flex items-center space-x-2">
               <Switch id="mine-only" checked={mine} onCheckedChange={setMine} />
-              <Label htmlFor="mine-only" className="cursor-pointer">Mine only</Label>
+              <Label htmlFor="mine-only" className="cursor-pointer">
+                {user?.role === "admin" ? "Assigned to me" : "My assignments"}
+              </Label>
             </div>
 
             <div className="flex items-center space-x-2 min-w-[200px]">
@@ -173,6 +177,10 @@ export default function RequirementsList() {
                         <span className="flex items-center gap-1.5">
                           <div className="w-2 h-2 rounded-full bg-primary/60"></div>
                           Dev: <span className="font-medium text-foreground">{req.developerName}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500/60"></div>
+                          Assigned: <span className="font-medium text-foreground">{req.assigneeName || req.developerName}</span>
                         </span>
                         <span className="flex items-center gap-1.5">
                           <div className="w-2 h-2 rounded-full bg-secondary-foreground/40"></div>

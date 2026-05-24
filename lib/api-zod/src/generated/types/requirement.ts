@@ -18,6 +18,8 @@ export interface Requirement {
   developerName: string;
   testerId?: number | null;
   testerName?: string | null;
+  assigneeId?: number | null;
+  assigneeName?: string | null;
   projectId: number;
   projectName: string;
   testCycles: number;

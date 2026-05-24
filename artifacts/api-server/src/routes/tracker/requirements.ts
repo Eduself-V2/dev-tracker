@@ -58,6 +58,8 @@ function serializeRequirementListRow(r: RequirementListRow) {
     developerName: r.developer_name,
     testerId: r.tester_id,
     testerName: r.tester_name,
+    assigneeId: r.assignee_id,
+    assigneeName: r.assignee_name,
     projectId: r.project_id,
     projectName: r.project_name,
     testCycles: r.test_cycles,
@@ -93,10 +95,11 @@ function serializeComment(c: CommentRow) {
 }
 
 const REQ_LIST_SQL = `
-  SELECT r.*, d.name AS developer_name, t.name AS tester_name, p.name AS project_name
+  SELECT r.*, d.name AS developer_name, t.name AS tester_name, a.name AS assignee_name, p.name AS project_name
   FROM requirements r
   JOIN users d ON d.id = r.developer_id
   LEFT JOIN users t ON t.id = r.tester_id
+  LEFT JOIN users a ON a.id = r.assignee_id
   JOIN projects p ON p.id = r.project_id
 `;
 
@@ -121,13 +124,13 @@ router.get("/", async (req, res, next) => {
     }
     if (params.mine) {
       const me = req.trackerUser!;
-      if (me.role === "tester") {
-        conditions.push("r.tester_id = ?");
-        values.push(me.id);
-      } else if (me.role === "developer") {
-        conditions.push("r.developer_id = ?");
-        values.push(me.id);
-      }
+      conditions.push("r.assignee_id = ?");
+      values.push(me.id);
+    }
+    if (!params.mine && req.trackerUser!.role !== "admin") {
+      const me = req.trackerUser!;
+      conditions.push("r.assignee_id = ?");
+      values.push(me.id);
     }
     const where =
       conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
@@ -163,14 +166,26 @@ router.post("/", async (req, res, next) => {
       }
     }
 
+    if (body.assigneeId !== undefined && body.assigneeId !== null) {
+      const [arows] = await trackerPool.query(
+        "SELECT id FROM users WHERE id = ?",
+        [body.assigneeId],
+      );
+      if ((arows as Array<{ id: number }>).length === 0) {
+        res.status(400).json({ error: "Assignee not found" });
+        return;
+      }
+    }
+
     const [insertResult] = await trackerPool.query(
-      "INSERT INTO requirements (title, description, priority, developer_id, tester_id, project_id) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO requirements (title, description, priority, developer_id, tester_id, assignee_id, project_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
       [
         body.title,
         body.description ?? null,
         body.priority ?? "medium",
         me.id,
         body.testerId ?? null,
+        body.assigneeId ?? me.id,
         body.projectId,
       ],
     );
@@ -282,6 +297,20 @@ router.patch("/:id", async (req, res, next) => {
       fields.push("tester_id = ?");
       values.push(body.testerId);
     }
+    if (body.assigneeId !== undefined) {
+      if (body.assigneeId !== null) {
+        const [arows] = await trackerPool.query(
+          "SELECT id FROM users WHERE id = ?",
+          [body.assigneeId],
+        );
+        if ((arows as Array<{ id: number }>).length === 0) {
+          res.status(400).json({ error: "Assignee not found" });
+          return;
+        }
+      }
+      fields.push("assignee_id = ?");
+      values.push(body.assigneeId);
+    }
 
     if (fields.length > 0) {
       values.push(id);
@@ -293,6 +322,12 @@ router.patch("/:id", async (req, res, next) => {
         await trackerPool.query(
           "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'assigned', ?, ?)",
           [id, me.id, body.testerId === null ? "Tester unassigned" : "Tester assigned"],
+        );
+      }
+      if (body.assigneeId !== undefined) {
+        await trackerPool.query(
+          "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'assigned', ?, ?)",
+          [id, me.id, body.assigneeId === null ? "Assignee unassigned" : "Assignee changed"],
         );
       }
     }

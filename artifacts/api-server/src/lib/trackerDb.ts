@@ -48,6 +48,7 @@ export interface RequirementRow {
   priority: "low" | "medium" | "high";
   developer_id: number;
   tester_id: number | null;
+  assignee_id: number | null;
   test_cycles: number;
   project_id: number;
   created_at: Date;
@@ -57,6 +58,7 @@ export interface RequirementRow {
 export interface RequirementListRow extends RequirementRow {
   developer_name: string;
   tester_name: string | null;
+  assignee_name: string | null;
   project_name: string;
 }
 

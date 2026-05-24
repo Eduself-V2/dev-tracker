@@ -330,6 +330,8 @@ export const TrackerListRequirementsResponseItem = zod.object({
   developerName: zod.string(),
   testerId: zod.number().nullish(),
   testerName: zod.string().nullish(),
+  assigneeId: zod.number().nullish(),
+  assigneeName: zod.string().nullish(),
   projectId: zod.number(),
   projectName: zod.string(),
   testCycles: zod.number(),
@@ -354,6 +356,7 @@ export const TrackerCreateRequirementBody = zod.object({
     .enum(["low", "medium", "high"])
     .default(trackerCreateRequirementBodyPriorityDefault),
   testerId: zod.number().nullish(),
+  assigneeId: zod.number().nullish(),
   projectId: zod.number(),
 });
 
@@ -381,6 +384,8 @@ export const TrackerGetRequirementResponse = zod.object({
     developerName: zod.string(),
     testerId: zod.number().nullish(),
     testerName: zod.string().nullish(),
+    assigneeId: zod.number().nullish(),
+    assigneeName: zod.string().nullish(),
     projectId: zod.number(),
     projectName: zod.string(),
     testCycles: zod.number(),
@@ -431,6 +436,7 @@ export const TrackerUpdateRequirementBody = zod.object({
   description: zod.string().nullish(),
   priority: zod.enum(["low", "medium", "high"]).optional(),
   testerId: zod.number().nullish(),
+  assigneeId: zod.number().nullish(),
   projectId: zod.number().optional(),
 });
 
@@ -450,6 +456,8 @@ export const TrackerUpdateRequirementResponse = zod.object({
   developerName: zod.string(),
   testerId: zod.number().nullish(),
   testerName: zod.string().nullish(),
+  assigneeId: zod.number().nullish(),
+  assigneeName: zod.string().nullish(),
   projectId: zod.number(),
   projectName: zod.string(),
   testCycles: zod.number(),
@@ -492,6 +500,8 @@ export const TrackerTransitionRequirementResponse = zod.object({
     developerName: zod.string(),
     testerId: zod.number().nullish(),
     testerName: zod.string().nullish(),
+    assigneeId: zod.number().nullish(),
+    assigneeName: zod.string().nullish(),
     projectId: zod.number(),
     projectName: zod.string(),
     testCycles: zod.number(),
@@ -569,6 +579,8 @@ export const TrackerStatsSummaryResponse = zod.object({
       developerName: zod.string(),
       testerId: zod.number().nullish(),
       testerName: zod.string().nullish(),
+      assigneeId: zod.number().nullish(),
+      assigneeName: zod.string().nullish(),
       projectId: zod.number(),
       projectName: zod.string(),
       testCycles: zod.number(),

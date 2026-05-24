@@ -765,6 +765,12 @@ components:
         testerName:
           type: string
           nullable: true
+        assigneeId:
+          type: integer
+          nullable: true
+        assigneeName:
+          type: string
+          nullable: true
         projectId:
           type: integer
         projectName:
@@ -890,6 +896,9 @@ components:
         testerId:
           type: integer
           nullable: true
+        assigneeId:
+          type: integer
+          nullable: true
         projectId:
           type: integer
       required: [title, projectId]
@@ -907,6 +916,9 @@ components:
           type: string
           enum: [low, medium, high]
         testerId:
+          type: integer
+          nullable: true
+        assigneeId:
           type: integer
           nullable: true
         projectId:

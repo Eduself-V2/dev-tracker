@@ -190,8 +190,8 @@ export default function RequirementDetail() {
         <h1 className="text-3xl font-bold tracking-tight leading-tight">{requirement.title}</h1>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground mt-2">
           <span className="flex items-center gap-2">
-            <Avatar className="w-5 h-5"><AvatarFallback className="text-[10px]">{requirement.developerName.charAt(0)}</AvatarFallback></Avatar>
-            Dev: <span className="font-medium text-foreground">{requirement.developerName}</span>
+            <Avatar className="w-5 h-5"><AvatarFallback className="text-[10px]">{requirement.assigneeName ? requirement.assigneeName.charAt(0) : requirement.developerName.charAt(0)}</AvatarFallback></Avatar>
+            Assigned: <span className="font-medium text-foreground">{requirement.assigneeName || requirement.developerName}</span>
           </span>
           <span className="flex items-center gap-2">
             <Avatar className="w-5 h-5"><AvatarFallback className="text-[10px]">{requirement.testerName ? requirement.testerName.charAt(0) : '?'}</AvatarFallback></Avatar>

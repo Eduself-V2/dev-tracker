@@ -204,6 +204,8 @@ export interface Requirement {
   developerName: string;
   testerId?: number | null;
   testerName?: string | null;
+  assigneeId?: number | null;
+  assigneeName?: string | null;
   projectId: number;
   projectName: string;
   testCycles: number;
@@ -292,6 +294,7 @@ export interface CreateRequirement {
   description?: string | null;
   priority?: CreateRequirementPriority;
   testerId?: number | null;
+  assigneeId?: number | null;
   projectId: number;
 }
 
@@ -313,6 +316,7 @@ export interface UpdateRequirement {
   description?: string | null;
   priority?: UpdateRequirementPriority;
   testerId?: number | null;
+  assigneeId?: number | null;
   projectId?: number;
 }
 

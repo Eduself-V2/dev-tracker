@@ -29,6 +29,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high"] as const),
   testerId: z.coerce.number().optional().nullable(),
+  assigneeId: z.coerce.number().optional().nullable(),
   projectId: z.coerce.number().min(1, "Project is required"),
 });
 
@@ -70,6 +71,7 @@ export default function RequirementCreate() {
       description: "",
       priority: "medium",
       testerId: null,
+      assigneeId: null,
       projectId: undefined,
     },
   });
@@ -95,6 +97,7 @@ export default function RequirementCreate() {
         description: data.description,
         priority: data.priority as CreateRequirementPriority,
         testerId: data.testerId || undefined,
+        assigneeId: data.assigneeId || undefined,
         projectId: data.projectId,
       } 
     });
@@ -173,6 +176,32 @@ export default function RequirementCreate() {
                     </FormItem>
                   )}
                 />
+
+                {user?.role === "admin" && (
+                  <FormField
+                    control={form.control}
+                    name="assigneeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Assign To</FormLabel>
+                        <Select onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))} value={field.value?.toString() || "none"}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select assignee" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Creator (self)</SelectItem>
+                            {users?.map((u) => (
+                              <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}
