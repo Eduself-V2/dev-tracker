@@ -3,3 +3,6 @@
 
 # No need to store the pnpm store twice.
 .local
+
+# Deployment config — do not let Replit overwrite these
+.github
