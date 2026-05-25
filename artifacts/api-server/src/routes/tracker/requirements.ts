@@ -176,12 +176,11 @@ router.post("/", async (req, res, next) => {
 
     if (body.testerId !== undefined && body.testerId !== null) {
       const [trows] = await trackerPool.query(
-        "SELECT id, role FROM users WHERE id = ?",
+        "SELECT id FROM users WHERE id = ?",
         [body.testerId],
       );
-      const tester = (trows as Array<{ id: number; role: TrackerRole }>)[0];
-      if (!tester || tester.role !== "tester") {
-        res.status(400).json({ error: "Assigned user is not a tester" });
+      if ((trows as Array<{ id: number }>).length === 0) {
+        res.status(400).json({ error: "Assigned QA user not found" });
         return;
       }
     }
@@ -305,12 +304,11 @@ router.patch("/:id", async (req, res, next) => {
     if (body.testerId !== undefined) {
       if (body.testerId !== null) {
         const [trows] = await trackerPool.query(
-          "SELECT id, role FROM users WHERE id = ?",
+          "SELECT id FROM users WHERE id = ?",
           [body.testerId],
         );
-        const tester = (trows as Array<{ id: number; role: TrackerRole }>)[0];
-        if (!tester || tester.role !== "tester") {
-          res.status(400).json({ error: "Assigned user is not a tester" });
+        if ((trows as Array<{ id: number }>).length === 0) {
+          res.status(400).json({ error: "Assigned QA user not found" });
           return;
         }
       }

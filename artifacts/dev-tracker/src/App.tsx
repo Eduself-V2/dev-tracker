@@ -1,3 +1,4 @@
+
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,6 +14,7 @@ import Dashboard from "@/pages/Dashboard";
 import RequirementsList from "@/pages/RequirementsList";
 import RequirementCreate from "@/pages/RequirementCreate";
 import RequirementDetail from "@/pages/RequirementDetail";
+import RequirementEdit from "@/pages/RequirementEdit";
 import Users from "@/pages/Users";
 import Projects from "@/pages/Projects";
 
@@ -27,6 +29,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/requirements" component={RequirementsList} />
         <Route path="/requirements/new" component={RequirementCreate} />
+        <Route path="/requirements/:id/edit" component={RequirementEdit} />
         <Route path="/requirements/:id" component={RequirementDetail} />
         <Route path="/users" component={Users} />
         <Route path="/projects" component={Projects} />

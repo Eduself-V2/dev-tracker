@@ -31,6 +31,7 @@ import {
   CheckCircle2,
   PlusCircle,
   FolderKanban,
+  Pencil,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -183,7 +184,14 @@ export default function RequirementDetail() {
             </Badge>
           </div>
         </div>
-        {/* We would add an edit button here if there was an edit page, but we're keeping it simple for now */}
+        {(user?.role === "admin" || (user?.role === "developer" && requirement.developerId === user?.id)) && (
+          <Link href={`/requirements/${reqId}/edit`}>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Pencil className="w-4 h-4" />
+              Edit
+            </Button>
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-col gap-2 mb-8">

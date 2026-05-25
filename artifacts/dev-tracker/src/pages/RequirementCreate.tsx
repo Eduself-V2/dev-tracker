@@ -44,7 +44,6 @@ export default function RequirementCreate() {
   const { data: users } = useTrackerListUsers({
     query: {
       queryKey: getTrackerListUsersQueryKey(),
-      enabled: user?.role === "admin"
     }
   });
 
@@ -103,7 +102,7 @@ export default function RequirementCreate() {
     });
   };
 
-  const testers = Array.isArray(users) ? users.filter(u => u.role === "tester") : [];
+  const allUsers = Array.isArray(users) ? users : [];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -232,20 +231,20 @@ export default function RequirementCreate() {
                     name="testerId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Assign Tester (Optional)</FormLabel>
-                        <Select 
-                          onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))} 
+                        <FormLabel>QA / Tester (Optional)</FormLabel>
+                        <Select
+                          onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))}
                           value={field.value?.toString() || "none"}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a tester" />
+                              <SelectValue placeholder="Select QA person" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="none">Unassigned</SelectItem>
-                            {testers.map(tester => (
-                              <SelectItem key={tester.id} value={tester.id.toString()}>{tester.name}</SelectItem>
+                            {allUsers.map(u => (
+                              <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
