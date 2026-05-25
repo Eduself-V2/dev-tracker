@@ -10,9 +10,19 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth";
 import { format } from "date-fns";
-import { Search, PlusCircle, AlertCircle, Circle, Clock, CheckCircle2, ArrowRightCircle, ListTodo, FolderKanban, User } from "lucide-react";
+import { Search, PlusCircle, AlertCircle, Circle, Clock, CheckCircle2, ArrowRightCircle, ListTodo, FolderKanban, User, ArrowUpDown } from "lucide-react";
 import { TrackerListRequirementsStatus } from "@workspace/api-client-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const statusLabels: Record<string, string> = {
+  open: "Open",
+  in_testing: "In Testing",
+  needs_fix: "Needs Fix",
+  confirmed: "Confirmed",
+  pushed_to_production: "In Production",
+};
+
+const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -47,6 +57,7 @@ export default function RequirementsList() {
   const [createdBy, setCreatedBy] = useState<number | undefined>(undefined);
   const [testedBy, setTestedBy] = useState<number | undefined>(undefined);
   const [assignedTo, setAssignedTo] = useState<number | undefined>(undefined);
+  const [prioritySort, setPrioritySort] = useState<"none" | "high_first" | "low_first">("none");
 
   const { data: projects } = useTrackerListProjects();
   const { data: allUsers } = useTrackerListUsers();
@@ -59,6 +70,12 @@ export default function RequirementsList() {
     createdBy,
     testedBy,
     assignedTo,
+  });
+
+  const sortedRequirements = [...(Array.isArray(requirements) ? requirements : [])].sort((a, b) => {
+    if (prioritySort === "high_first") return priorityOrder[b.priority] - priorityOrder[a.priority];
+    if (prioritySort === "low_first") return priorityOrder[a.priority] - priorityOrder[b.priority];
+    return 0;
   });
 
   const stageConfigs = [
@@ -124,6 +141,23 @@ export default function RequirementsList() {
                   {(Array.isArray(projects) ? projects : []).map((p) => (
                     <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center space-x-2 min-w-[200px]">
+              <ArrowUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Select
+                value={prioritySort}
+                onValueChange={(val) => setPrioritySort(val as "none" | "high_first" | "low_first")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sort by priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Default order</SelectItem>
+                  <SelectItem value="high_first">High priority first</SelectItem>
+                  <SelectItem value="low_first">Low priority first</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -202,7 +236,7 @@ export default function RequirementsList() {
           [...Array(3)].map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-xl" />
           ))
-        ) : (Array.isArray(requirements) && requirements.length === 0) ? (
+        ) : (sortedRequirements.length === 0) ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <ListTodo className="h-12 w-12 text-muted-foreground/30 mb-4" />
@@ -218,7 +252,7 @@ export default function RequirementsList() {
             </CardContent>
           </Card>
         ) : (
-          (Array.isArray(requirements) ? requirements : []).map((req, index) => (
+          sortedRequirements.map((req, index) => (
             <Link key={req.id} href={`/requirements/${req.id}`}>
               <Card className="hover:border-primary/30 transition-all cursor-pointer group shadow-sm hover:shadow-md animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}>
                 <CardContent className="p-5">
@@ -254,21 +288,25 @@ export default function RequirementsList() {
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="flex flex-col items-end gap-2">
                         <div className="flex items-center gap-2">
-                          <Badge variant={req.priority === 'high' ? 'destructive' : req.priority === 'medium' ? 'default' : 'secondary'} className="text-xs">
-                            {req.priority}
+                          <Badge
+                            variant={req.priority === 'high' ? 'destructive' : req.priority === 'medium' ? 'default' : 'secondary'}
+                            className="text-xs capitalize"
+                            title={`Priority: ${req.priority}`}
+                          >
+                            {req.priority === 'high' ? '🔴 High' : req.priority === 'medium' ? '🟡 Medium' : '🟢 Low'}
                           </Badge>
-                          <Badge variant="outline" className={`text-xs border ${
+                          <Badge variant="outline" className={`text-xs border font-medium ${
                             req.status === 'open' ? 'border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400' :
                             req.status === 'in_testing' ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400' :
                             req.status === 'needs_fix' ? 'border-destructive/50 bg-destructive/10 text-destructive' :
                             req.status === 'confirmed' ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' :
                             'border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-400'
                           }`}>
-                            {req.status.replace(/_/g, ' ')}
+                            {statusLabels[req.status] ?? req.status.replace(/_/g, ' ')}
                           </Badge>
                         </div>
-                        <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                          {req.testCycles} cycle{req.testCycles !== 1 ? 's' : ''}
+                        <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md" title="Number of test cycles">
+                          {req.testCycles} test cycle{req.testCycles !== 1 ? 's' : ''}
                         </span>
                       </div>
                     </div>

@@ -177,10 +177,16 @@ export default function RequirementDetail() {
           </Link>
           <div className="flex items-center gap-3">
             <Badge variant={requirement.priority === 'high' ? 'destructive' : requirement.priority === 'medium' ? 'default' : 'secondary'}>
-              {requirement.priority} priority
+              {requirement.priority === 'high' ? '🔴 High Priority' : requirement.priority === 'medium' ? '🟡 Medium Priority' : '🟢 Low Priority'}
             </Badge>
-            <Badge variant="outline" className="capitalize px-3 py-1 bg-background shadow-sm">
-              {requirement.status.replace(/_/g, ' ')}
+            <Badge variant="outline" className={`px-3 py-1 font-medium ${
+              requirement.status === 'open' ? 'border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400' :
+              requirement.status === 'in_testing' ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400' :
+              requirement.status === 'needs_fix' ? 'border-destructive/50 bg-destructive/10 text-destructive' :
+              requirement.status === 'confirmed' ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' :
+              'border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-400'
+            }`}>
+              {{ open: "Open", in_testing: "In Testing", needs_fix: "Needs Fix", confirmed: "Confirmed", pushed_to_production: "In Production" }[requirement.status] ?? requirement.status.replace(/_/g, ' ')}
             </Badge>
           </div>
         </div>
