@@ -119,7 +119,7 @@ export default function Projects() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
           [...Array(3)].map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-xl" />)
-        ) : projects?.length === 0 ? (
+        ) : (Array.isArray(projects) && projects.length === 0) ? (
           <Card className="col-span-full border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <FolderKanban className="h-12 w-12 text-muted-foreground/30 mb-4" />
@@ -130,7 +130,7 @@ export default function Projects() {
             </CardContent>
           </Card>
         ) : (
-          projects?.map((project) => (
+          (Array.isArray(projects) ? projects : []).map((project) => (
             <Card key={project.id} className="group hover:border-primary/30 transition-all shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">

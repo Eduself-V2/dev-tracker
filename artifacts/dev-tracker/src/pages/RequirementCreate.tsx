@@ -103,7 +103,7 @@ export default function RequirementCreate() {
     });
   };
 
-  const testers = users?.filter(u => u.role === "tester") || [];
+  const testers = Array.isArray(users) ? users.filter(u => u.role === "tester") : [];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -167,7 +167,7 @@ export default function RequirementCreate() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {projects?.map((p) => (
+                          {(Array.isArray(projects) ? projects : []).map((p) => (
                             <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
                           ))}
                         </SelectContent>
@@ -192,7 +192,7 @@ export default function RequirementCreate() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="none">Creator (self)</SelectItem>
-                            {users?.map((u) => (
+                            {(Array.isArray(users) ? users : []).map((u) => (
                               <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
                             ))}
                           </SelectContent>

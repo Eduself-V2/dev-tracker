@@ -1,7 +1,7 @@
 -- Dev Tracker MySQL Schema
 -- Run this against a fresh MySQL 8 database to set up all tables.
 
-CREATE DATABASE IF NOT EXISTS dev_tracker CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE DATABASE IF NOT EXISTS dev_tracker CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE dev_tracker;
 
 CREATE TABLE users (
@@ -17,7 +17,7 @@ CREATE TABLE users (
   PRIMARY KEY (id),
   UNIQUE KEY email (email),
   UNIQUE KEY username (username)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE projects (
   id int NOT NULL AUTO_INCREMENT,
@@ -25,7 +25,7 @@ CREATE TABLE projects (
   description text,
   created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE requirements (
   id int NOT NULL AUTO_INCREMENT,
@@ -50,7 +50,7 @@ CREATE TABLE requirements (
   CONSTRAINT fk_req_dev FOREIGN KEY (developer_id) REFERENCES users (id) ON DELETE RESTRICT,
   CONSTRAINT fk_req_project FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE RESTRICT,
   CONSTRAINT fk_req_tester FOREIGN KEY (tester_id) REFERENCES users (id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE requirement_events (
   id int NOT NULL AUTO_INCREMENT,
@@ -66,7 +66,7 @@ CREATE TABLE requirement_events (
   KEY fk_evt_actor (actor_id),
   CONSTRAINT fk_evt_actor FOREIGN KEY (actor_id) REFERENCES users (id) ON DELETE RESTRICT,
   CONSTRAINT fk_evt_req FOREIGN KEY (requirement_id) REFERENCES requirements (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE requirement_comments (
   id int NOT NULL AUTO_INCREMENT,
@@ -79,4 +79,4 @@ CREATE TABLE requirement_comments (
   KEY fk_cmt_author (author_id),
   CONSTRAINT fk_cmt_author FOREIGN KEY (author_id) REFERENCES users (id) ON DELETE RESTRICT,
   CONSTRAINT fk_cmt_req FOREIGN KEY (requirement_id) REFERENCES requirements (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

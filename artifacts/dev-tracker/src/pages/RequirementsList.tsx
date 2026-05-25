@@ -121,7 +121,7 @@ export default function RequirementsList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All projects</SelectItem>
-                  {projects?.map((p) => (
+                  {(Array.isArray(projects) ? projects : []).map((p) => (
                     <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -158,7 +158,7 @@ export default function RequirementsList() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Created by anyone</SelectItem>
-                    {allUsers?.map((u) => (
+                    {(Array.isArray(allUsers) ? allUsers : []).map((u) => (
                       <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
                     ))}
                   </SelectContent>
@@ -172,7 +172,7 @@ export default function RequirementsList() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tested by anyone</SelectItem>
-                    {allUsers?.filter((u) => u.role === "tester").map((u) => (
+                    {(Array.isArray(allUsers) ? allUsers : []).filter((u) => u.role === "tester").map((u) => (
                       <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -186,7 +186,7 @@ export default function RequirementsList() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Assigned to anyone</SelectItem>
-                    {allUsers?.map((u) => (
+                    {(Array.isArray(allUsers) ? allUsers : []).map((u) => (
                       <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
                     ))}
                   </SelectContent>
@@ -202,7 +202,7 @@ export default function RequirementsList() {
           [...Array(3)].map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-xl" />
           ))
-        ) : requirements?.length === 0 ? (
+        ) : (Array.isArray(requirements) && requirements.length === 0) ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <ListTodo className="h-12 w-12 text-muted-foreground/30 mb-4" />
@@ -218,7 +218,7 @@ export default function RequirementsList() {
             </CardContent>
           </Card>
         ) : (
-          requirements?.map((req, index) => (
+          (Array.isArray(requirements) ? requirements : []).map((req, index) => (
             <Link key={req.id} href={`/requirements/${req.id}`}>
               <Card className="hover:border-primary/30 transition-all cursor-pointer group shadow-sm hover:shadow-md animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'both' }}>
                 <CardContent className="p-5">

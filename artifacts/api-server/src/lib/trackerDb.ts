@@ -1,14 +1,11 @@
 import mysql from "mysql2/promise";
 
-const socketPath =
-  process.env.TRACKER_MYSQL_SOCKET ??
-  "/home/runner/workspace/.local/mysql/run/mysql.sock";
-
 export const trackerPool = mysql.createPool({
+  host: process.env.TRACKER_MYSQL_HOST ?? "127.0.0.1",
+  port: Number(process.env.TRACKER_MYSQL_PORT ?? 3306),
   user: process.env.TRACKER_MYSQL_USER ?? "root",
   password: process.env.TRACKER_MYSQL_PASSWORD ?? "",
   database: process.env.TRACKER_MYSQL_DATABASE ?? "dev_tracker",
-  socketPath,
   connectionLimit: 10,
   dateStrings: false,
   decimalNumbers: true,
