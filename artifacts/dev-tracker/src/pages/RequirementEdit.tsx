@@ -12,7 +12,6 @@ import {
   getTrackerListRequirementsQueryKey,
   getTrackerGetRequirementQueryKey,
   getTrackerListUsersQueryKey,
-  getTrackerListProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -74,11 +73,7 @@ export default function RequirementEdit() {
     },
   });
 
-  const { data: projects } = useTrackerListProjects({
-    query: {
-      queryKey: getTrackerListProjectsQueryKey(),
-    },
-  });
+  const { data: projects } = useTrackerListProjects();
 
   const updateMutation = useTrackerUpdateRequirement({
     mutation: {
