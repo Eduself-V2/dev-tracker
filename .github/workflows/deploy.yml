@@ -31,13 +31,16 @@ jobs:
 
       # ─── Pre-check build (catch errors before hitting EC2) ─
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build API server
         run: pnpm --filter @workspace/api-server run build
 
       - name: Build frontend
         run: pnpm --filter @workspace/dev-tracker run build
+        env:
+          PORT: "3000"
+          BASE_PATH: "/"
 
       # ─── AWS Auth via OIDC ────────────────────────────────
       - name: Configure AWS credentials
@@ -57,7 +60,7 @@ jobs:
               "git pull origin pre-production",
               "pnpm install --no-frozen-lockfile",
               "pnpm --filter @workspace/api-server run build",
-              "pnpm --filter @workspace/dev-tracker run build",
+              "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/dev-tracker run build",
               "pm2 restart tracker-api",
               "sudo systemctl reload nginx",
               "echo Deployment successful!"
