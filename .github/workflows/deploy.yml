@@ -56,13 +56,14 @@ jobs:
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
+              "export PATH=$PATH:/usr/local/bin:/usr/bin",
               "cd /var/www/dev_tracker",
               "git pull origin pre-production",
               "pnpm install --no-frozen-lockfile",
               "pnpm --filter @workspace/api-server run build",
               "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/dev-tracker run build",
-              "pm2 restart tracker-api",
-              "sudo systemctl reload nginx",
+              "su - ubuntu -c \"pm2 restart tracker-api\"",
+              "systemctl reload nginx",
               "echo Deployment successful!"
             ]' \
             --query "Command.CommandId" \
