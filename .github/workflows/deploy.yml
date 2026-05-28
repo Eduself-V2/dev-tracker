@@ -31,7 +31,7 @@ jobs:
 
       # ─── Pre-check build (catch errors before hitting EC2) ─
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build API server
         run: pnpm --filter @workspace/api-server run build
@@ -58,8 +58,9 @@ jobs:
             --parameters 'commands=[
               "export PATH=$PATH:/usr/local/bin:/usr/bin",
               "cd /var/www/dev_tracker",
-              "git pull origin pre-production",
-              "pnpm install --no-frozen-lockfile",
+              "git fetch origin pre-production",
+              "git reset --hard origin/pre-production",
+              "pnpm install --frozen-lockfile",
               "pnpm --filter @workspace/api-server run build",
               "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/dev-tracker run build",
               "su - ubuntu -c \"pm2 restart tracker-api\"",
