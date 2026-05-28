@@ -56,12 +56,13 @@ jobs:
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
+              "set -e",
               "export PATH=$PATH:/usr/local/bin:/usr/bin",
+              "export HOME=/root",
               "export CI=true",
-              "git config --global --add safe.directory /var/www/dev_tracker",
+              "git config --system --add safe.directory /var/www/dev_tracker",
               "corepack enable",
               "corepack prepare pnpm@11.3.0 --activate",
-              "pnpm config set confirmModulesPurge false",
               "cd /var/www/dev_tracker",
               "git fetch origin pre-production",
               "git reset --hard origin/pre-production",
