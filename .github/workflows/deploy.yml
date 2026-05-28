@@ -57,8 +57,11 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "export PATH=$PATH:/usr/local/bin:/usr/bin",
+              "export CI=true",
+              "git config --global --add safe.directory /var/www/dev_tracker",
               "corepack enable",
               "corepack prepare pnpm@11.3.0 --activate",
+              "pnpm config set confirmModulesPurge false",
               "cd /var/www/dev_tracker",
               "git fetch origin pre-production",
               "git reset --hard origin/pre-production",
