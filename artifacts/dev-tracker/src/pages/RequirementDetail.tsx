@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useTrackerGetRequirement,
@@ -270,6 +270,7 @@ export default function RequirementDetail() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
 
   const { data, isLoading, isError } = useTrackerGetRequirement(reqId, {
     query: {
@@ -288,6 +289,8 @@ export default function RequirementDetail() {
   const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<Set<number>>(new Set());
   const [deleteCommentId, setDeleteCommentId] = useState<number | null>(null);
   const [deletingComment, setDeletingComment] = useState(false);
+  const [deleteReqOpen, setDeleteReqOpen] = useState(false);
+  const [deletingReq, setDeletingReq] = useState(false);
 
   const commentMutation = useTrackerAddComment({
     mutation: {
@@ -412,6 +415,24 @@ export default function RequirementDetail() {
     }
   };
 
+  const confirmDeleteReq = async () => {
+    setDeletingReq(true);
+    try {
+      const res = await fetch(`/api/tracker/requirements/${reqId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete requirement");
+      queryClient.invalidateQueries({ queryKey: getTrackerListRequirementsQueryKey() });
+      toast({ title: "Requirement deleted" });
+      navigate("/requirements");
+    } catch {
+      toast({ title: "Failed to delete requirement", variant: "destructive" });
+      setDeletingReq(false);
+      setDeleteReqOpen(false);
+    }
+  };
+
   const confirmDeleteComment = async () => {
     if (deleteCommentId === null) return;
     setDeletingComment(true);
@@ -462,14 +483,22 @@ export default function RequirementDetail() {
             </Badge>
           </div>
         </div>
-        {(user?.role === "admin" || (user?.role === "developer" && requirement.developerId === user?.id)) && (
-          <Link href={`/requirements/${reqId}/edit`}>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Pencil className="w-4 h-4" />
-              Edit
+        <div className="flex items-center gap-2">
+          {(user?.role === "admin" || (user?.role === "developer" && requirement.developerId === user?.id)) && (
+            <Link href={`/requirements/${reqId}/edit`}>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Pencil className="w-4 h-4" />
+                Edit
+              </Button>
+            </Link>
+          )}
+          {user?.role === "admin" && (
+            <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteReqOpen(true)}>
+              <Trash2 className="w-4 h-4" />
+              Delete
             </Button>
-          </Link>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-2 mb-8">
@@ -713,6 +742,27 @@ export default function RequirementDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Delete Requirement Confirmation Dialog */}
+      <Dialog open={deleteReqOpen} onOpenChange={setDeleteReqOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Requirement?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove the requirement along with all its comments and attachments. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteReqOpen(false)} disabled={deletingReq}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteReq} disabled={deletingReq}>
+              {deletingReq ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Comment Confirmation Dialog */}
       <Dialog open={deleteCommentId !== null} onOpenChange={() => setDeleteCommentId(null)}>

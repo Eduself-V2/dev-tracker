@@ -548,6 +548,31 @@ router.patch("/:id/comments/:commentId", async (req, res, next) => {
   }
 });
 
+router.delete("/:id", async (req, res, next) => {
+  try {
+    const reqId = parseInt(String(req.params.id));
+    if (isNaN(reqId)) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+    if (req.trackerUser!.role !== "admin") {
+      res.status(403).json({ error: "Only admins can delete requirements" });
+      return;
+    }
+    const [result] = await trackerPool.query(
+      "DELETE FROM requirements WHERE id = ?",
+      [reqId],
+    );
+    if ((result as { affectedRows: number }).affectedRows === 0) {
+      res.status(404).json({ error: "Requirement not found" });
+      return;
+    }
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.delete("/:id/comments/:commentId", async (req, res, next) => {
   try {
     const reqId = parseInt(String(req.params.id));

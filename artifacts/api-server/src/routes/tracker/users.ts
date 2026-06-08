@@ -139,6 +139,11 @@ router.delete("/:id", async (req, res, next) => {
       res.status(400).json({ error: "Cannot delete your own account" });
       return;
     }
+    const [targetRows] = await trackerPool.query("SELECT role FROM users WHERE id = ?", [id]);
+    if ((targetRows as { role: string }[]).length > 0 && (targetRows as { role: string }[])[0].role === "admin") {
+      res.status(403).json({ error: "Cannot delete an admin user" });
+      return;
+    }
     try {
       const [result] = await trackerPool.query(
         "DELETE FROM users WHERE id = ?",
