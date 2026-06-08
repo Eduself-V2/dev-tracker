@@ -441,6 +441,7 @@ export const TrackerStatsSummaryResponse = zod.object({
       testCycles: zod.number(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
+      lastActivityAt: zod.coerce.date(),
     }),
   ),
 });

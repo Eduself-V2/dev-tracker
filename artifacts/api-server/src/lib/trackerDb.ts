@@ -57,6 +57,7 @@ export interface RequirementListRow extends RequirementRow {
   tester_name: string | null;
   assignee_name: string | null;
   project_name: string;
+  last_activity_at?: Date;
 }
 
 export interface EventRow {

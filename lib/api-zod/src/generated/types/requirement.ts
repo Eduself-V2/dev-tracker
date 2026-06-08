@@ -25,4 +25,5 @@ export interface Requirement {
   testCycles: number;
   createdAt: Date;
   updatedAt: Date;
+  lastActivityAt?: Date;
 }

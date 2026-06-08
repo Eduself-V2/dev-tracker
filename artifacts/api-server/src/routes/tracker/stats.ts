@@ -45,14 +45,17 @@ router.get("/summary", async (req, res, next) => {
     ];
 
     const [recentRows] = await trackerPool.query(
-      `SELECT r.*, d.name AS developer_name, t.name AS tester_name, a.name AS assignee_name, p.name AS project_name
+      `SELECT r.*, d.name AS developer_name, t.name AS tester_name, a.name AS assignee_name, p.name AS project_name,
+              GREATEST(r.updated_at, COALESCE(MAX(e.created_at), r.updated_at)) AS last_activity_at
        FROM requirements r
        JOIN users d ON d.id = r.developer_id
        LEFT JOIN users t ON t.id = r.tester_id
        LEFT JOIN users a ON a.id = r.assignee_id
        JOIN projects p ON p.id = r.project_id
+       LEFT JOIN requirement_events e ON e.requirement_id = r.id
        WHERE 1=1${recentProject}${recentMine}
-       ORDER BY r.updated_at DESC
+       GROUP BY r.id
+       ORDER BY last_activity_at DESC
        LIMIT 8`,
       recentValues,
     );
@@ -81,6 +84,7 @@ router.get("/summary", async (req, res, next) => {
         projectName: r.project_name,
         createdAt: r.created_at.toISOString(),
         updatedAt: r.updated_at.toISOString(),
+        lastActivityAt: (r.last_activity_at ?? r.updated_at).toISOString(),
       })),
     });
   } catch (err) {

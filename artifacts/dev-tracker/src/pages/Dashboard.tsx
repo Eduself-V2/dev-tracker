@@ -191,8 +191,8 @@ export default function Dashboard() {
                           {req.title}
                         </span>
                         <span className="text-sm text-muted-foreground">
-                          Updated{" "}
-                          {format(new Date(req.updatedAt), "MMM d, h:mm a")}
+                          Last activity{" "}
+                          {format(new Date(req.lastActivityAt ?? req.updatedAt), "MMM d, h:mm a")}
                         </span>
                       </div>
                       <div className="flex items-center gap-4">
