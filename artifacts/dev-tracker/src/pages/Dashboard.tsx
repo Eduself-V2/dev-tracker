@@ -173,7 +173,7 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-1">
         <Card className="col-span-1 shadow-sm">
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle>Recently Updated</CardTitle>
           </CardHeader>
           <CardContent>
             {recentItems.length === 0 ? (

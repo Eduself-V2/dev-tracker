@@ -45,11 +45,12 @@ router.get("/summary", async (req, res, next) => {
     ];
 
     const [recentRows] = await trackerPool.query(
-      `SELECT r.*, d.name AS developer_name, t.name AS tester_name, a.name AS assignee_name
+      `SELECT r.*, d.name AS developer_name, t.name AS tester_name, a.name AS assignee_name, p.name AS project_name
        FROM requirements r
        JOIN users d ON d.id = r.developer_id
        LEFT JOIN users t ON t.id = r.tester_id
        LEFT JOIN users a ON a.id = r.assignee_id
+       JOIN projects p ON p.id = r.project_id
        WHERE 1=1${recentProject}${recentMine}
        ORDER BY r.updated_at DESC
        LIMIT 8`,
@@ -77,6 +78,7 @@ router.get("/summary", async (req, res, next) => {
         assigneeId: r.assignee_id,
         assigneeName: r.assignee_name,
         testCycles: r.test_cycles,
+        projectName: r.project_name,
         createdAt: r.created_at.toISOString(),
         updatedAt: r.updated_at.toISOString(),
       })),
