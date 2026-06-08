@@ -499,4 +499,89 @@ router.post("/:id/comments", async (req, res, next) => {
   }
 });
 
+router.patch("/:id/comments/:commentId", async (req, res, next) => {
+  try {
+    const reqId = parseInt(String(req.params.id));
+    const commentId = parseInt(String(req.params.commentId));
+    const me = req.trackerUser!;
+
+    if (isNaN(reqId) || isNaN(commentId)) {
+      res.status(400).json({ error: "Invalid IDs" });
+      return;
+    }
+
+    const { body: newBody } = req.body ?? {};
+    if (!newBody || typeof newBody !== "string" || newBody.trim().length === 0) {
+      res.status(400).json({ error: "Comment body is required" });
+      return;
+    }
+
+    const [crows] = await trackerPool.query(
+      "SELECT * FROM requirement_comments WHERE id = ? AND requirement_id = ?",
+      [commentId, reqId],
+    );
+    const comment = (crows as CommentRow[])[0];
+    if (!comment) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    if (me.role !== "admin" && comment.author_id !== me.id) {
+      res.status(403).json({ error: "You can only edit your own comments" });
+      return;
+    }
+
+    await trackerPool.query(
+      "UPDATE requirement_comments SET body = ? WHERE id = ?",
+      [newBody.trim(), commentId],
+    );
+
+    const [rows] = await trackerPool.query(
+      `SELECT c.*, u.name AS author_name, u.role AS author_role
+       FROM requirement_comments c JOIN users u ON u.id = c.author_id
+       WHERE c.id = ?`,
+      [commentId],
+    );
+    res.json(serializeComment((rows as CommentRow[])[0]));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/:id/comments/:commentId", async (req, res, next) => {
+  try {
+    const reqId = parseInt(String(req.params.id));
+    const commentId = parseInt(String(req.params.commentId));
+    const me = req.trackerUser!;
+
+    if (isNaN(reqId) || isNaN(commentId)) {
+      res.status(400).json({ error: "Invalid IDs" });
+      return;
+    }
+
+    const [crows] = await trackerPool.query(
+      "SELECT * FROM requirement_comments WHERE id = ? AND requirement_id = ?",
+      [commentId, reqId],
+    );
+    const comment = (crows as CommentRow[])[0];
+    if (!comment) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    if (me.role !== "admin" && comment.author_id !== me.id) {
+      res.status(403).json({ error: "You can only delete your own comments" });
+      return;
+    }
+
+    await trackerPool.query(
+      "DELETE FROM requirement_comments WHERE id = ?",
+      [commentId],
+    );
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

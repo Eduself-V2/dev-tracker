@@ -287,13 +287,17 @@ export default function RequirementDetail() {
             const formData = new FormData();
             commentFiles.forEach((f) => formData.append("files", f));
             formData.append("commentId", String(newComment.id));
-            await fetch(`/api/tracker/requirements/${reqId}/attachments`, {
+            const uploadRes = await fetch(`/api/tracker/requirements/${reqId}/attachments`, {
               method: "POST",
               body: formData,
               credentials: "include",
             });
-          } catch {
-            toast({ title: "Comment posted but files failed to upload", variant: "destructive" });
+            if (!uploadRes.ok) {
+              const body = await uploadRes.json().catch(() => ({}));
+              throw new Error((body as any).error ?? `Upload failed (${uploadRes.status})`);
+            }
+          } catch (uploadErr: any) {
+            toast({ title: uploadErr?.message ?? "Comment posted but files failed to upload", variant: "destructive" });
           } finally {
             setUploadingComment(false);
           }

@@ -41,11 +41,15 @@ async function uploadAttachments(requirementId: number, files: File[]) {
   if (files.length === 0) return;
   const formData = new FormData();
   files.forEach((f) => formData.append("files", f));
-  await fetch(`/api/tracker/requirements/${requirementId}/attachments`, {
+  const res = await fetch(`/api/tracker/requirements/${requirementId}/attachments`, {
     method: "POST",
     body: formData,
     credentials: "include",
   });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as any).error ?? `Upload failed (${res.status})`);
+  }
 }
 
 export default function RequirementCreate() {
@@ -69,8 +73,8 @@ export default function RequirementCreate() {
           setUploading(true);
           try {
             await uploadAttachments(data.id, attachmentFiles);
-          } catch {
-            toast({ title: "Requirement created but some files failed to upload", variant: "destructive" });
+          } catch (uploadErr: any) {
+            toast({ title: uploadErr?.message ?? "Requirement created but files failed to upload", variant: "destructive" });
           } finally {
             setUploading(false);
           }
