@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { 
-  useTrackerGetRequirement, 
+import {
+  useTrackerGetRequirement,
   getTrackerGetRequirementQueryKey,
   useTrackerTransitionRequirement,
   useTrackerAddComment,
@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import FileUploadZone from "@/components/FileUploadZone";
 import {
   ArrowLeft,
   Clock,
@@ -31,9 +32,18 @@ import {
   CheckCircle2,
   PlusCircle,
   FolderKanban,
+  Calendar,
   Pencil,
+  Trash2,
+  X,
+  Check,
+  Paperclip,
+  FileText,
+  FileSpreadsheet,
+  Image,
+  Download,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, isSameDay } from "date-fns";
 
 type Transition = {
   status: TransitionRequirementToStatus;
@@ -41,6 +51,177 @@ type Transition = {
   icon: any;
   variant: "default" | "destructive" | "secondary";
 };
+
+type Attachment = {
+  id: number;
+  requirementId: number;
+  commentId: number | null;
+  s3Url: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedBy: number;
+  uploaderName: string;
+  createdAt: string;
+};
+
+function attachmentIcon(mimeType: string) {
+  if (mimeType.startsWith("image/")) return <Image className="w-4 h-4 text-blue-500 shrink-0" />;
+  if (mimeType === "application/pdf") return <FileText className="w-4 h-4 text-red-500 shrink-0" />;
+  return <FileSpreadsheet className="w-4 h-4 text-green-600 shrink-0" />;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function AttachmentList({ attachments, reqId, onDeleted }: { attachments: Attachment[]; reqId: number; onDeleted: (id: number) => void }) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const handleDelete = async (att: Attachment) => {
+    if (!confirm(`Delete "${att.originalName}"?`)) return;
+    try {
+      const res = await fetch(`/api/tracker/requirements/${reqId}/attachments/${att.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error();
+      onDeleted(att.id);
+      toast({ title: "Attachment deleted" });
+    } catch {
+      toast({ title: "Failed to delete attachment", variant: "destructive" });
+    }
+  };
+
+  if (attachments.length === 0) return null;
+
+  return (
+    <ul className="space-y-1.5">
+      {attachments.map((att) => (
+        <li key={att.id} className="flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-sm border border-border/40">
+          {att.mimeType.startsWith("image/") ? (
+            <a href={att.s3Url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 flex-1 min-w-0 group">
+              <img src={att.s3Url} alt={att.originalName} className="w-8 h-8 object-cover rounded border" />
+              <span className="truncate group-hover:text-primary transition-colors">{att.originalName}</span>
+            </a>
+          ) : (
+            <a href={att.s3Url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 flex-1 min-w-0 group">
+              {attachmentIcon(att.mimeType)}
+              <span className="truncate group-hover:text-primary transition-colors">{att.originalName}</span>
+            </a>
+          )}
+          <span className="text-[11px] text-muted-foreground shrink-0">{formatBytes(att.sizeBytes)}</span>
+          <a href={att.s3Url} download={att.originalName} target="_blank" rel="noopener noreferrer">
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" title="Download">
+              <Download className="w-3 h-3" />
+            </Button>
+          </a>
+          {(user?.role === "admin" || user?.id === att.uploadedBy) && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0 hover:bg-destructive/10"
+              title="Delete"
+              onClick={() => handleDelete(att)}
+            >
+              <Trash2 className="w-3 h-3 text-destructive/70" />
+            </Button>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function TimelineView({ events, expanded, onToggle }: { events: any[]; expanded: boolean; onToggle: () => void }) {
+  const visibleEvents = expanded ? events : events.slice(0, 5);
+  const hasMore = events.length > 5;
+
+  const groups: { date: Date; label: string; items: any[] }[] = [];
+  for (const e of visibleEvents) {
+    const d = new Date(e.createdAt);
+    const last = groups[groups.length - 1];
+    if (last && isSameDay(last.date, d)) {
+      last.items.push(e);
+    } else {
+      groups.push({ date: d, label: format(d, "MMM d, yyyy"), items: [e] });
+    }
+  }
+
+  const kindLabel: Record<string, string> = {
+    created: "created this",
+    transitioned: "changed status",
+    assigned: "assigned",
+    comment: "commented",
+  };
+
+  const kindIcon: Record<string, any> = {
+    created: PlusCircle,
+    transitioned: ArrowRight,
+    assigned: User,
+    comment: MessageSquare,
+  };
+
+  return (
+    <div className="space-y-5">
+      {groups.map((group, gi) => (
+        <div key={gi} className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border/60" />
+            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{group.label}</span>
+            <div className="h-px flex-1 bg-border/60" />
+          </div>
+          <div className="space-y-3">
+            {group.items.map((event) => {
+              const Icon = kindIcon[event.kind] || Activity;
+              return (
+                <div key={event.id} className="flex gap-3 items-start">
+                  <div className="w-7 h-7 flex items-center justify-center rounded-full border bg-muted/40 text-muted-foreground shrink-0 mt-0.5">
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-sm">
+                        <span className="font-medium">{event.actorName}</span>{" "}
+                        <span className="text-muted-foreground">{kindLabel[event.kind] || event.kind}</span>
+                      </p>
+                      <span className="text-[11px] text-muted-foreground shrink-0 tabular-nums">
+                        {format(new Date(event.createdAt), "h:mm a")}
+                      </span>
+                    </div>
+                    {event.kind === "transitioned" && event.fromStatus && event.toStatus && (
+                      <div className="mt-1 flex items-center gap-1.5 text-xs flex-wrap">
+                        <Badge variant="outline" className="px-1.5 py-0 h-5 font-normal capitalize bg-muted/40">{event.fromStatus.replace(/_/g, " ")}</Badge>
+                        <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <Badge variant="secondary" className="px-1.5 py-0 h-5 font-normal capitalize">{event.toStatus.replace(/_/g, " ")}</Badge>
+                      </div>
+                    )}
+                    {event.note && (
+                      <p className="mt-1.5 text-xs text-muted-foreground bg-muted/30 rounded-md px-2.5 py-2 italic leading-relaxed">
+                        "{event.note}"
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      {hasMore && (
+        <button
+          onClick={onToggle}
+          className="w-full text-center text-xs font-medium text-primary hover:text-primary/80 transition-colors py-2"
+        >
+          {expanded ? "Show less" : `Show ${events.length - 5} more events`}
+        </button>
+      )}
+    </div>
+  );
+}
 
 const getAllowedTransitions = (currentStatus: string, role: string): Transition[] => {
   if (role === 'admin') {
@@ -53,7 +234,6 @@ const getAllowedTransitions = (currentStatus: string, role: string): Transition[
     ];
     return all.filter(t => t.status !== currentStatus);
   }
-
   if (role === 'developer') {
     if (currentStatus === 'open' || currentStatus === 'needs_fix') {
       return [{ status: 'in_testing', label: 'Submit for Testing', icon: Play, variant: 'default' }];
@@ -63,7 +243,6 @@ const getAllowedTransitions = (currentStatus: string, role: string): Transition[
     }
     return [];
   }
-
   if (role === 'tester') {
     if (currentStatus === 'in_testing') {
       return [
@@ -73,7 +252,6 @@ const getAllowedTransitions = (currentStatus: string, role: string): Transition[
     }
     return [];
   }
-
   return [];
 };
 
@@ -87,21 +265,45 @@ export default function RequirementDetail() {
   const { data, isLoading, isError } = useTrackerGetRequirement(reqId, {
     query: {
       enabled: !isNaN(reqId),
-      queryKey: getTrackerGetRequirementQueryKey(reqId)
-    }
+      queryKey: getTrackerGetRequirementQueryKey(reqId),
+    },
   });
 
   const [commentBody, setCommentBody] = useState("");
+  const [commentFiles, setCommentFiles] = useState<File[]>([]);
+  const [uploadingComment, setUploadingComment] = useState(false);
   const [transitionNote, setTransitionNote] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editBody, setEditBody] = useState("");
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<Set<number>>(new Set());
 
   const commentMutation = useTrackerAddComment({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async (newComment: any) => {
+        if (commentFiles.length > 0) {
+          setUploadingComment(true);
+          try {
+            const formData = new FormData();
+            commentFiles.forEach((f) => formData.append("files", f));
+            formData.append("commentId", String(newComment.id));
+            await fetch(`/api/tracker/requirements/${reqId}/attachments`, {
+              method: "POST",
+              body: formData,
+              credentials: "include",
+            });
+          } catch {
+            toast({ title: "Comment posted but files failed to upload", variant: "destructive" });
+          } finally {
+            setUploadingComment(false);
+          }
+        }
         setCommentBody("");
+        setCommentFiles([]);
         queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) });
       },
-      onError: () => toast({ title: "Failed to post comment", variant: "destructive" })
-    }
+      onError: () => toast({ title: "Failed to post comment", variant: "destructive" }),
+    },
   });
 
   const transitionMutation = useTrackerTransitionRequirement({
@@ -113,8 +315,8 @@ export default function RequirementDetail() {
         queryClient.invalidateQueries({ queryKey: getTrackerStatsSummaryQueryKey() });
         toast({ title: "Status updated successfully" });
       },
-      onError: () => toast({ title: "Failed to update status", variant: "destructive" })
-    }
+      onError: () => toast({ title: "Failed to update status", variant: "destructive" }),
+    },
   });
 
   if (isError || isNaN(reqId)) {
@@ -146,25 +348,76 @@ export default function RequirementDetail() {
   }
 
   const { requirement, events, comments } = data;
+  const allAttachments: Attachment[] = ((data as any).attachments ?? []).filter(
+    (a: Attachment) => !deletedAttachmentIds.has(a.id),
+  );
+  const reqAttachments = allAttachments.filter((a) => a.commentId === null);
   const allowedTransitions = getAllowedTransitions(requirement.status, user?.role || "");
 
   const handleTransition = (status: TransitionRequirementToStatus) => {
-    transitionMutation.mutate({
-      id: reqId,
-      data: {
-        toStatus: status,
-        note: transitionNote || undefined
-      }
-    });
+    transitionMutation.mutate({ id: reqId, data: { toStatus: status, note: transitionNote || undefined } });
   };
 
   const handlePostComment = () => {
     if (!commentBody.trim()) return;
-    commentMutation.mutate({
-      id: reqId,
-      data: { body: commentBody }
-    });
+    commentMutation.mutate({ id: reqId, data: { body: commentBody } });
   };
+
+  const canEditComment = (comment: any) => {
+    if (!user) return false;
+    return user.role === "admin" || comment.authorId === user.id;
+  };
+
+  const startEdit = (comment: any) => {
+    setEditingCommentId(comment.id);
+    setEditBody(comment.body);
+  };
+
+  const cancelEdit = () => {
+    setEditingCommentId(null);
+    setEditBody("");
+  };
+
+  const saveEdit = async (commentId: number) => {
+    if (!editBody.trim()) return;
+    try {
+      const res = await fetch(`/api/tracker/requirements/${reqId}/comments/${commentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ body: editBody.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to update comment");
+      setEditingCommentId(null);
+      setEditBody("");
+      queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) });
+      toast({ title: "Comment updated" });
+    } catch {
+      toast({ title: "Failed to update comment", variant: "destructive" });
+    }
+  };
+
+  const deleteComment = async (commentId: number) => {
+    if (!confirm("Delete this comment?")) return;
+    try {
+      const res = await fetch(`/api/tracker/requirements/${reqId}/comments/${commentId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete comment");
+      queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) });
+      toast({ title: "Comment deleted" });
+    } catch {
+      toast({ title: "Failed to delete comment", variant: "destructive" });
+    }
+  };
+
+  const handleAttachmentDeleted = (attachmentId: number) => {
+    setDeletedAttachmentIds((prev) => new Set([...prev, attachmentId]));
+    queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) });
+  };
+
+  const isCommentPosting = commentMutation.isPending || uploadingComment;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-500 pb-20">
@@ -201,7 +454,18 @@ export default function RequirementDetail() {
       </div>
 
       <div className="flex flex-col gap-2 mb-8">
-        <h1 className="text-3xl font-bold tracking-tight leading-tight">{requirement.title}</h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-3xl font-bold tracking-tight leading-tight">{requirement.title}</h1>
+          {(requirement as any).category && (
+            <Badge variant="secondary" className={`text-xs capitalize ${
+              (requirement as any).category === 'bug' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+              (requirement as any).category === 'feature' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+              'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+            }`}>
+              {(requirement as any).category === 'bug' ? '🐛 Bug' : (requirement as any).category === 'feature' ? '✨ Feature' : '📋 Task'}
+            </Badge>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground mt-2">
           <span className="flex items-center gap-2">
             <Avatar className="w-5 h-5"><AvatarFallback className="text-[10px]">{requirement.assigneeName ? requirement.assigneeName.charAt(0) : requirement.developerName.charAt(0)}</AvatarFallback></Avatar>
@@ -225,6 +489,12 @@ export default function RequirementDetail() {
             <Clock className="w-4 h-4" />
             Created {format(new Date(requirement.createdAt), "MMM d, yyyy")}
           </span>
+          {(requirement as any).deadline && (
+            <span className={`flex items-center gap-1.5 ${new Date((requirement as any).deadline) < new Date() && requirement.status !== 'pushed_to_production' ? 'text-destructive font-medium' : ''}`}>
+              <Calendar className="w-4 h-4" />
+              Due {format(new Date((requirement as any).deadline), "MMM d, yyyy")}
+            </span>
+          )}
         </div>
       </div>
 
@@ -234,11 +504,23 @@ export default function RequirementDetail() {
             <CardHeader className="pb-3 border-b bg-muted/20">
               <CardTitle className="text-lg">Description</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 space-y-4">
               {requirement.description ? (
                 <p className="whitespace-pre-wrap text-foreground/90 leading-relaxed">{requirement.description}</p>
               ) : (
                 <p className="text-muted-foreground italic">No description provided.</p>
+              )}
+              {reqAttachments.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Paperclip className="w-4 h-4" />
+                      Attachments ({reqAttachments.length})
+                    </p>
+                    <AttachmentList attachments={reqAttachments} reqId={reqId} onDeleted={handleAttachmentDeleted} />
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -258,49 +540,96 @@ export default function RequirementDetail() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {comments.map(comment => (
-                    <div key={comment.id} className="flex gap-4">
-                      <Avatar className="w-10 h-10 border shadow-sm shrink-0">
-                        <AvatarFallback className="bg-primary/5 text-primary font-medium">{comment.authorName.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm">{comment.authorName}</span>
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{comment.authorRole}</Badge>
+                  {comments.map((comment) => {
+                    const cmtAttachments = allAttachments.filter((a) => a.commentId === comment.id);
+                    return (
+                      <div key={comment.id} className="flex gap-4">
+                        <Avatar className="w-10 h-10 border shadow-sm shrink-0">
+                          <AvatarFallback className="bg-primary/5 text-primary font-medium">{comment.authorName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm">{comment.authorName}</span>
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{comment.authorRole}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                              </span>
+                              {canEditComment(comment) && (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => startEdit(comment)}
+                                    className="p-1 rounded hover:bg-muted transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                                  </button>
+                                  <button
+                                    onClick={() => deleteComment(comment.id)}
+                                    className="p-1 rounded hover:bg-destructive/10 transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 text-destructive/70" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
-                          </span>
-                        </div>
-                        <div className="bg-muted/40 p-3 rounded-lg rounded-tl-none border border-border/50 text-sm">
-                          <p className="whitespace-pre-wrap">{comment.body}</p>
+                          {editingCommentId === comment.id ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={editBody}
+                                onChange={(e) => setEditBody(e.target.value)}
+                                className="min-h-[80px] text-sm bg-background"
+                              />
+                              <div className="flex justify-end gap-2">
+                                <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                                  <X className="w-4 h-4 mr-1" /> Cancel
+                                </Button>
+                                <Button size="sm" onClick={() => saveEdit(comment.id)} disabled={!editBody.trim()}>
+                                  <Check className="w-4 h-4 mr-1" /> Save
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="bg-muted/40 p-3 rounded-lg rounded-tl-none border border-border/50 text-sm">
+                                <p className="whitespace-pre-wrap">{comment.body}</p>
+                              </div>
+                              {cmtAttachments.length > 0 && (
+                                <AttachmentList attachments={cmtAttachments} reqId={reqId} onDeleted={handleAttachmentDeleted} />
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
               <Separator />
-              
+
               <div className="flex gap-4">
                 <Avatar className="w-10 h-10 border shadow-sm shrink-0 hidden sm:block">
                   <AvatarFallback className="bg-primary text-primary-foreground font-medium">{user?.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-3">
-                  <Textarea 
-                    placeholder="Add a comment..." 
+                  <Textarea
+                    placeholder="Add a comment..."
                     value={commentBody}
                     onChange={(e) => setCommentBody(e.target.value)}
                     className="min-h-[100px] resize-y bg-background"
                   />
+                  <FileUploadZone files={commentFiles} onChange={setCommentFiles} compact />
                   <div className="flex justify-end">
-                    <Button 
-                      onClick={handlePostComment} 
-                      disabled={!commentBody.trim() || commentMutation.isPending}
+                    <Button
+                      onClick={handlePostComment}
+                      disabled={!commentBody.trim() || isCommentPosting}
                     >
-                      {commentMutation.isPending ? "Posting..." : "Post Comment"}
+                      {isCommentPosting ? (uploadingComment ? "Uploading..." : "Posting...") : "Post Comment"}
                     </Button>
                   </div>
                 </div>
@@ -317,17 +646,17 @@ export default function RequirementDetail() {
                 <CardDescription>Move this requirement to the next stage.</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 space-y-4">
-                <Textarea 
-                  placeholder="Optional note for this transition..." 
+                <Textarea
+                  placeholder="Optional note for this transition..."
                   value={transitionNote}
                   onChange={(e) => setTransitionNote(e.target.value)}
                   className="text-sm min-h-[80px] bg-background"
                 />
                 <div className="space-y-2">
-                  {allowedTransitions.map(t => (
-                    <Button 
-                      key={t.status} 
-                      variant={t.variant} 
+                  {allowedTransitions.map((t) => (
+                    <Button
+                      key={t.status}
+                      variant={t.variant}
                       className="w-full justify-start"
                       onClick={() => handleTransition(t.status)}
                       disabled={transitionMutation.isPending}
@@ -349,42 +678,18 @@ export default function RequirementDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
-                {events.map((event, i) => (
-                  <div key={event.id} className="relative flex items-start gap-4">
-                    <div className="absolute left-0 w-10 h-10 flex items-center justify-center z-10 bg-background rounded-full border shadow-sm shrink-0 text-muted-foreground">
-                      {event.kind === 'created' && <PlusCircle className="w-4 h-4" />}
-                      {event.kind === 'transitioned' && <ArrowRight className="w-4 h-4" />}
-                      {event.kind === 'comment' && <MessageSquare className="w-4 h-4" />}
-                      {event.kind === 'assigned' && <User className="w-4 h-4" />}
-                    </div>
-                    <div className="ml-14 flex-1 pb-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <p className="text-sm font-medium text-foreground">
-                          {event.actorName} <span className="font-normal text-muted-foreground">{event.kind === 'created' ? 'created this' : event.kind === 'transitioned' ? 'changed status' : event.kind === 'assigned' ? 'assigned tester' : 'commented'}</span>
-                        </p>
-                        <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-                          {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
-                        </span>
-                      </div>
-                      
-                      {event.kind === 'transitioned' && event.fromStatus && event.toStatus && (
-                        <div className="mt-1 flex items-center gap-2 text-xs">
-                          <Badge variant="outline" className="px-1.5 py-0 h-5 font-normal capitalize bg-muted/50">{event.fromStatus.replace(/_/g, ' ')}</Badge>
-                          <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                          <Badge variant="secondary" className="px-1.5 py-0 h-5 font-normal capitalize">{event.toStatus.replace(/_/g, ' ')}</Badge>
-                        </div>
-                      )}
-                      
-                      {event.note && (
-                        <div className="mt-2 bg-muted/30 border border-border/50 rounded-md p-2.5 text-xs text-muted-foreground italic">
-                          "{event.note}"
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {events.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Activity className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                  <p>No activity yet.</p>
+                </div>
+              ) : (
+                <TimelineView
+                  events={events}
+                  expanded={timelineExpanded}
+                  onToggle={() => setTimelineExpanded(!timelineExpanded)}
+                />
+              )}
             </CardContent>
           </Card>
         </div>

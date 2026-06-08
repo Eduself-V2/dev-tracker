@@ -80,3 +80,17 @@ export interface CommentRow {
   author_role: TrackerRole;
   created_at: Date;
 }
+
+export interface AttachmentRow {
+  id: number;
+  requirement_id: number;
+  comment_id: number | null;
+  s3_key: string;
+  s3_url: string;
+  original_name: string;
+  mime_type: string;
+  size_bytes: number;
+  uploaded_by: number;
+  uploader_name: string;
+  created_at: Date;
+}

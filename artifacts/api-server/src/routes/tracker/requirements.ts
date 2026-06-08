@@ -17,6 +17,7 @@ import {
   type CommentRow,
   type RequirementRow,
   type TrackerRole,
+  type AttachmentRow,
 } from "../../lib/trackerDb";
 
 const router: IRouter = Router();
@@ -91,6 +92,21 @@ function serializeComment(c: CommentRow) {
     authorName: c.author_name,
     authorRole: c.author_role,
     createdAt: c.created_at.toISOString(),
+  };
+}
+
+function serializeAttachment(a: AttachmentRow) {
+  return {
+    id: a.id,
+    requirementId: a.requirement_id,
+    commentId: a.comment_id,
+    s3Url: a.s3_url,
+    originalName: a.original_name,
+    mimeType: a.mime_type,
+    sizeBytes: a.size_bytes,
+    uploadedBy: a.uploaded_by,
+    uploaderName: a.uploader_name,
+    createdAt: a.created_at.toISOString(),
   };
 }
 
@@ -252,10 +268,18 @@ router.get("/:id", async (req, res, next) => {
        ORDER BY c.created_at ASC, c.id ASC`,
       [id],
     );
+    const [arows] = await trackerPool.query(
+      `SELECT a.*, u.name AS uploader_name FROM requirement_attachments a
+       JOIN users u ON u.id = a.uploaded_by
+       WHERE a.requirement_id = ?
+       ORDER BY a.created_at ASC`,
+      [id],
+    );
     res.json({
       requirement: serializeRequirementListRow(row),
       events: (erows as EventRow[]).map(serializeEvent),
       comments: (crows as CommentRow[]).map(serializeComment),
+      attachments: (arows as AttachmentRow[]).map(serializeAttachment),
     });
   } catch (err) {
     next(err);

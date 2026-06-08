@@ -4,8 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { 
-  useTrackerCreateRequirement, 
+import {
+  useTrackerCreateRequirement,
   useTrackerListUsers,
   useTrackerListProjects,
   getTrackerListRequirementsQueryKey,
@@ -15,14 +15,16 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { AlertCircle, ArrowLeft, Loader2, Save } from "lucide-react";
 import type { CreateRequirementPriority } from "@workspace/api-client-react";
+import FileUploadZone from "@/components/FileUploadZone";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title is too long"),
@@ -35,23 +37,44 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+async function uploadAttachments(requirementId: number, files: File[]) {
+  if (files.length === 0) return;
+  const formData = new FormData();
+  files.forEach((f) => formData.append("files", f));
+  await fetch(`/api/tracker/requirements/${requirementId}/attachments`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  });
+}
+
 export default function RequirementCreate() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const { data: users } = useTrackerListUsers({
-    query: {
-      queryKey: getTrackerListUsersQueryKey(),
-    }
+    query: { queryKey: getTrackerListUsersQueryKey() },
   });
 
   const { data: projects } = useTrackerListProjects();
 
   const createMutation = useTrackerCreateRequirement({
     mutation: {
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
+        if (attachmentFiles.length > 0) {
+          setUploading(true);
+          try {
+            await uploadAttachments(data.id, attachmentFiles);
+          } catch {
+            toast({ title: "Requirement created but some files failed to upload", variant: "destructive" });
+          } finally {
+            setUploading(false);
+          }
+        }
         queryClient.invalidateQueries({ queryKey: getTrackerListRequirementsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getTrackerStatsSummaryQueryKey() });
         toast({ title: "Requirement created successfully" });
@@ -59,8 +82,8 @@ export default function RequirementCreate() {
       },
       onError: () => {
         toast({ title: "Failed to create requirement", variant: "destructive" });
-      }
-    }
+      },
+    },
   });
 
   const form = useForm<FormValues>({
@@ -90,7 +113,7 @@ export default function RequirementCreate() {
   }
 
   const onSubmit = (data: FormValues) => {
-    createMutation.mutate({ 
+    createMutation.mutate({
       data: {
         title: data.title,
         description: data.description,
@@ -98,11 +121,12 @@ export default function RequirementCreate() {
         testerId: data.testerId || undefined,
         assigneeId: data.assigneeId || undefined,
         projectId: data.projectId,
-      } 
+      },
     });
   };
 
   const allUsers = Array.isArray(users) ? users : [];
+  const isPending = createMutation.isPending || uploading;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -141,10 +165,10 @@ export default function RequirementCreate() {
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Provide details, acceptance criteria, etc." 
+                      <Textarea
+                        placeholder="Provide details, acceptance criteria, etc."
                         className="min-h-[120px] resize-y"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -243,7 +267,7 @@ export default function RequirementCreate() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="none">Unassigned</SelectItem>
-                            {allUsers.map(u => (
+                            {allUsers.map((u) => (
                               <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
                             ))}
                           </SelectContent>
@@ -254,16 +278,25 @@ export default function RequirementCreate() {
                   />
                 )}
               </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Attachments (Optional)</p>
+                <p className="text-xs text-muted-foreground">Attach images, PDFs, Excel or CSV files to this requirement.</p>
+                <FileUploadZone files={attachmentFiles} onChange={setAttachmentFiles} />
+              </div>
             </CardContent>
+
             <CardFooter className="bg-muted/30 border-t py-4 flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setLocation("/requirements")}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? (
+              <Button type="submit" disabled={isPending}>
+                {isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
+                    {uploading ? "Uploading files..." : "Saving..."}
                   </>
                 ) : (
                   <>
