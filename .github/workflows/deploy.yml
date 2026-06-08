@@ -66,6 +66,7 @@ jobs:
               "cd /var/www/dev_tracker",
               "git fetch origin pre-production",
               "git reset --hard origin/pre-production",
+              "aws ssm get-parameter --name /dev-tracker/prod-env --with-decryption --query Parameter.Value --output text > /var/www/dev_tracker/.env",
               "pnpm install --frozen-lockfile",
               "pnpm --filter @workspace/api-server run build",
               "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/dev-tracker run build",

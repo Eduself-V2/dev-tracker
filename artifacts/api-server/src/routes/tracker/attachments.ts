@@ -46,7 +46,15 @@ function serializeAttachment(a: AttachmentRow) {
 
 // POST /tracker/requirements/:id/attachments
 // Accepts multipart/form-data with field "files" (up to 5) and optional "commentId"
-router.post("/", upload.array("files", 5), async (req, res, next) => {
+router.post("/", (req, res, next) => {
+  upload.array("files", 5)(req, res, (err) => {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    next();
+  });
+}, async (req, res, next) => {
   try {
     const reqId = parseInt(String(req.params["id"]));
     if (isNaN(reqId)) {
