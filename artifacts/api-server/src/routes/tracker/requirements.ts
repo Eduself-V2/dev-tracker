@@ -19,6 +19,35 @@ import {
   type TrackerRole,
   type AttachmentRow,
 } from "../../lib/trackerDb";
+import {
+  sendEmail,
+  buildTransitionEmail,
+  buildCommentEmail,
+  buildAssignmentEmail,
+} from "../../lib/ses";
+
+async function fetchEmails(
+  userIds: (number | null | undefined)[],
+  excludeId?: number,
+): Promise<Map<number, string>> {
+  const ids = [
+    ...new Set(
+      userIds.filter(
+        (id): id is number => id != null && id !== excludeId,
+      ),
+    ),
+  ];
+  if (ids.length === 0) return new Map();
+  const [rows] = await trackerPool.query(
+    "SELECT id, email FROM users WHERE id IN (?) AND email IS NOT NULL AND email != ''",
+    [ids],
+  );
+  const map = new Map<number, string>();
+  for (const row of rows as Array<{ id: number; email: string }>) {
+    map.set(row.id, row.email);
+  }
+  return map;
+}
 
 const router: IRouter = Router();
 
@@ -236,6 +265,25 @@ router.post("/", async (req, res, next) => {
     );
     const row = (rows as RequirementListRow[])[0];
     res.status(201).json(serializeRequirementListRow(row));
+
+    // notify tester if assigned (fire-and-forget)
+    if (body.testerId && body.testerId !== me.id) {
+      void (async () => {
+        const emails = await fetchEmails([body.testerId]);
+        const testerEmail = emails.get(body.testerId!);
+        if (testerEmail) {
+          await sendEmail({
+            to: [testerEmail],
+            ...buildAssignmentEmail({
+              reqId: insertId,
+              reqTitle: body.title,
+              actorName: me.name,
+              role: "tester",
+            }),
+          });
+        }
+      })();
+    }
   } catch (err) {
     next(err);
   }
@@ -390,9 +438,46 @@ router.patch("/:id", async (req, res, next) => {
       `${REQ_LIST_SQL} WHERE r.id = ?`,
       [id],
     );
-    res.json(
-      serializeRequirementListRow((rows as RequirementListRow[])[0]),
-    );
+    const updated = (rows as RequirementListRow[])[0];
+    res.json(serializeRequirementListRow(updated));
+
+    // notify newly assigned tester / assignee (fire-and-forget)
+    void (async () => {
+      if (body.testerId && body.testerId !== me.id) {
+        const emails = await fetchEmails([body.testerId]);
+        const email = emails.get(body.testerId);
+        if (email) {
+          await sendEmail({
+            to: [email],
+            ...buildAssignmentEmail({
+              reqId: id,
+              reqTitle: updated.title,
+              actorName: me.name,
+              role: "tester",
+            }),
+          });
+        }
+      }
+      if (
+        body.assigneeId &&
+        body.assigneeId !== me.id &&
+        body.assigneeId !== body.testerId
+      ) {
+        const emails = await fetchEmails([body.assigneeId]);
+        const email = emails.get(body.assigneeId);
+        if (email) {
+          await sendEmail({
+            to: [email],
+            ...buildAssignmentEmail({
+              reqId: id,
+              reqTitle: updated.title,
+              actorName: me.name,
+              role: "assignee",
+            }),
+          });
+        }
+      }
+    })();
   } catch (err) {
     next(err);
   }
@@ -455,9 +540,45 @@ router.post("/:id/transition", async (req, res, next) => {
       `${REQ_LIST_SQL} WHERE r.id = ?`,
       [id],
     );
-    res.json(
-      serializeRequirementListRow((rows as RequirementListRow[])[0]),
-    );
+    const transitioned = (rows as RequirementListRow[])[0];
+    res.json(serializeRequirementListRow(transitioned));
+
+    // notify relevant parties based on new status (fire-and-forget)
+    void (async () => {
+      const toNotify: (number | null | undefined)[] = [];
+      switch (body.toStatus) {
+        case "in_testing":
+          toNotify.push(existing.tester_id);
+          break;
+        case "needs_fix":
+          toNotify.push(existing.developer_id);
+          break;
+        case "confirmed":
+          toNotify.push(existing.developer_id);
+          break;
+        case "pushed_to_production":
+          toNotify.push(existing.developer_id, existing.tester_id);
+          break;
+        case "open":
+          toNotify.push(existing.developer_id);
+          break;
+      }
+      const emails = await fetchEmails(toNotify, me.id);
+      const to = [...emails.values()];
+      if (to.length > 0) {
+        await sendEmail({
+          to,
+          ...buildTransitionEmail({
+            reqId: id,
+            reqTitle: transitioned.title,
+            fromStatus: existing.status,
+            toStatus: body.toStatus,
+            actorName: me.name,
+            note: body.note,
+          }),
+        });
+      }
+    })();
   } catch (err) {
     next(err);
   }
@@ -470,13 +591,21 @@ router.post("/:id/comments", async (req, res, next) => {
     const me = req.trackerUser!;
 
     const [existRows] = await trackerPool.query(
-      "SELECT id FROM requirements WHERE id = ?",
+      "SELECT id, title, developer_id, tester_id FROM requirements WHERE id = ?",
       [id],
     );
     if ((existRows as Array<{ id: number }>).length === 0) {
       res.status(404).json({ error: "Requirement not found" });
       return;
     }
+    const reqInfo = (
+      existRows as Array<{
+        id: number;
+        title: string;
+        developer_id: number;
+        tester_id: number | null;
+      }>
+    )[0];
 
     const [insertResult] = await trackerPool.query(
       "INSERT INTO requirement_comments (requirement_id, body, author_id) VALUES (?, ?, ?)",
@@ -494,6 +623,26 @@ router.post("/:id/comments", async (req, res, next) => {
       [insertId],
     );
     res.status(201).json(serializeComment((rows as CommentRow[])[0]));
+
+    // notify developer + tester (excluding commenter) (fire-and-forget)
+    void (async () => {
+      const emails = await fetchEmails(
+        [reqInfo.developer_id, reqInfo.tester_id],
+        me.id,
+      );
+      const to = [...emails.values()];
+      if (to.length > 0) {
+        await sendEmail({
+          to,
+          ...buildCommentEmail({
+            reqId: id,
+            reqTitle: reqInfo.title,
+            authorName: me.name,
+            commentBody: body.body,
+          }),
+        });
+      }
+    })();
   } catch (err) {
     next(err);
   }
