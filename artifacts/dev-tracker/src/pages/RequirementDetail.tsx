@@ -19,6 +19,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import FileUploadZone from "@/components/FileUploadZone";
 import {
   ArrowLeft,
@@ -42,6 +50,7 @@ import {
   FileSpreadsheet,
   Image,
   Download,
+  Loader2,
 } from "lucide-react";
 import { format, formatDistanceToNow, isSameDay } from "date-fns";
 
@@ -277,6 +286,8 @@ export default function RequirementDetail() {
   const [editBody, setEditBody] = useState("");
   const [timelineExpanded, setTimelineExpanded] = useState(false);
   const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<Set<number>>(new Set());
+  const [deleteCommentId, setDeleteCommentId] = useState<number | null>(null);
+  const [deletingComment, setDeletingComment] = useState(false);
 
   const commentMutation = useTrackerAddComment({
     mutation: {
@@ -401,10 +412,11 @@ export default function RequirementDetail() {
     }
   };
 
-  const deleteComment = async (commentId: number) => {
-    if (!confirm("Delete this comment?")) return;
+  const confirmDeleteComment = async () => {
+    if (deleteCommentId === null) return;
+    setDeletingComment(true);
     try {
-      const res = await fetch(`/api/tracker/requirements/${reqId}/comments/${commentId}`, {
+      const res = await fetch(`/api/tracker/requirements/${reqId}/comments/${deleteCommentId}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -413,6 +425,9 @@ export default function RequirementDetail() {
       toast({ title: "Comment deleted" });
     } catch {
       toast({ title: "Failed to delete comment", variant: "destructive" });
+    } finally {
+      setDeletingComment(false);
+      setDeleteCommentId(null);
     }
   };
 
@@ -571,7 +586,7 @@ export default function RequirementDetail() {
                                     <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                                   </button>
                                   <button
-                                    onClick={() => deleteComment(comment.id)}
+                                    onClick={() => setDeleteCommentId(comment.id)}
                                     className="p-1 rounded hover:bg-destructive/10 transition-colors"
                                     title="Delete"
                                   >
@@ -698,6 +713,27 @@ export default function RequirementDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Delete Comment Confirmation Dialog */}
+      <Dialog open={deleteCommentId !== null} onOpenChange={() => setDeleteCommentId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Comment?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove the comment. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteCommentId(null)} disabled={deletingComment}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteComment} disabled={deletingComment}>
+              {deletingComment ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
