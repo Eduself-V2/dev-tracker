@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth";
 import { format } from "date-fns";
-import { Search, PlusCircle, AlertCircle, Circle, Clock, CheckCircle2, ArrowRightCircle, ListTodo, FolderKanban, User, ArrowUpDown } from "lucide-react";
+import { Search, PlusCircle, AlertCircle, Circle, Clock, CheckCircle2, ArrowRightCircle, ListTodo, FolderKanban, User, ArrowUpDown, CalendarDays, X } from "lucide-react";
 import { TrackerListRequirementsStatus } from "@workspace/api-client-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -58,6 +58,11 @@ export default function RequirementsList() {
   const [testedBy, setTestedBy] = useState<number | undefined>(undefined);
   const [assignedTo, setAssignedTo] = useState<number | undefined>(undefined);
   const [prioritySort, setPrioritySort] = useState<"none" | "high_first" | "low_first">("none");
+  const [priorityFilter, setPriorityFilter] = useState<"all" | "high" | "medium" | "low">("all");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
+  const [updatedFrom, setUpdatedFrom] = useState("");
+  const [updatedTo, setUpdatedTo] = useState("");
 
   const { data: projects } = useTrackerListProjects();
   const { data: allUsers } = useTrackerListUsers();
@@ -72,11 +77,22 @@ export default function RequirementsList() {
     assignedTo,
   });
 
-  const sortedRequirements = [...(Array.isArray(requirements) ? requirements : [])].sort((a, b) => {
-    if (prioritySort === "high_first") return priorityOrder[b.priority] - priorityOrder[a.priority];
-    if (prioritySort === "low_first") return priorityOrder[a.priority] - priorityOrder[b.priority];
-    return 0;
-  });
+  const sortedRequirements = [...(Array.isArray(requirements) ? requirements : [])]
+    .filter((r) => {
+      if (priorityFilter !== "all" && r.priority !== priorityFilter) return false;
+      const created = new Date(r.createdAt);
+      const updated = new Date(r.updatedAt);
+      if (createdFrom && created < new Date(createdFrom)) return false;
+      if (createdTo && created > new Date(createdTo + "T23:59:59")) return false;
+      if (updatedFrom && updated < new Date(updatedFrom)) return false;
+      if (updatedTo && updated > new Date(updatedTo + "T23:59:59")) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (prioritySort === "high_first") return priorityOrder[b.priority] - priorityOrder[a.priority];
+      if (prioritySort === "low_first") return priorityOrder[a.priority] - priorityOrder[b.priority];
+      return 0;
+    });
 
   const stageConfigs = [
     { key: 'all', label: 'All', icon: ListTodo },
@@ -141,6 +157,23 @@ export default function RequirementsList() {
                   {(Array.isArray(projects) ? projects : []).map((p) => (
                     <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center space-x-2 min-w-[180px]">
+              <Select
+                value={priorityFilter}
+                onValueChange={(val) => setPriorityFilter(val as "all" | "high" | "medium" | "low")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All priorities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All priorities</SelectItem>
+                  <SelectItem value="high">🔴 High</SelectItem>
+                  <SelectItem value="medium">🟡 Medium</SelectItem>
+                  <SelectItem value="low">🟢 Low</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -228,6 +261,57 @@ export default function RequirementsList() {
               </div>
             </div>
           )}
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-border/40">
+            <div className="flex items-center gap-2 flex-1">
+              <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground shrink-0">Created</span>
+              <Input
+                type="date"
+                className="text-sm h-9"
+                value={createdFrom}
+                onChange={(e) => setCreatedFrom(e.target.value)}
+                placeholder="From"
+              />
+              <span className="text-muted-foreground text-xs shrink-0">to</span>
+              <Input
+                type="date"
+                className="text-sm h-9"
+                value={createdTo}
+                onChange={(e) => setCreatedTo(e.target.value)}
+                placeholder="To"
+              />
+              {(createdFrom || createdTo) && (
+                <button onClick={() => { setCreatedFrom(""); setCreatedTo(""); }} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-1">
+              <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground shrink-0">Updated</span>
+              <Input
+                type="date"
+                className="text-sm h-9"
+                value={updatedFrom}
+                onChange={(e) => setUpdatedFrom(e.target.value)}
+                placeholder="From"
+              />
+              <span className="text-muted-foreground text-xs shrink-0">to</span>
+              <Input
+                type="date"
+                className="text-sm h-9"
+                value={updatedTo}
+                onChange={(e) => setUpdatedTo(e.target.value)}
+                placeholder="To"
+              />
+              {(updatedFrom || updatedTo) && (
+                <button onClick={() => { setUpdatedFrom(""); setUpdatedTo(""); }} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
