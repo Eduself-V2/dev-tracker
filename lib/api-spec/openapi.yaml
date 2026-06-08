@@ -557,6 +557,9 @@ components:
         updatedAt:
           type: string
           format: date-time
+        lastActivityAt:
+          type: string
+          format: date-time
       required: [id, title, status, priority, developerId, developerName, projectId, projectName, testCycles, createdAt, updatedAt]
     RequirementEvent:
       type: object
