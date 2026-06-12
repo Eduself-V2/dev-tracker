@@ -19,6 +19,23 @@ import {
   type TrackerRole,
   type AttachmentRow,
 } from "../../lib/trackerDb";
+import { sendEmail } from "../../lib/ses";
+import { taskAssignedTemplate, statusTransitionTemplate } from "../../lib/emailTemplates";
+
+async function getUserEmails(ids: number[]): Promise<Map<number, { name: string; email: string }>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return new Map();
+  const placeholders = unique.map(() => "?").join(", ");
+  const [rows] = await trackerPool.query(
+    `SELECT id, name, email FROM users WHERE id IN (${placeholders})`,
+    unique,
+  );
+  const map = new Map<number, { name: string; email: string }>();
+  for (const r of rows as Array<{ id: number; name: string; email: string }>) {
+    map.set(r.id, { name: r.name, email: r.email });
+  }
+  return map;
+}
 
 const router: IRouter = Router();
 
@@ -236,6 +253,26 @@ router.post("/", async (req, res, next) => {
     );
     const row = (rows as RequirementListRow[])[0];
     res.status(201).json(serializeRequirementListRow(row));
+
+    // Notify assignee if different from the creator
+    const effectiveAssigneeId = body.assigneeId ?? me.id;
+    if (effectiveAssigneeId !== me.id) {
+      const users = await getUserEmails([effectiveAssigneeId]);
+      const assignee = users.get(effectiveAssigneeId);
+      if (assignee) {
+        sendEmail(
+          [assignee.email],
+          `Task assigned to you: ${body.title}`,
+          taskAssignedTemplate({
+            taskId: insertId,
+            taskTitle: body.title,
+            assignerName: me.name,
+            priority: body.priority ?? "medium",
+            projectName: row.project_name,
+          }),
+        );
+      }
+    }
   } catch (err) {
     next(err);
   }
@@ -390,9 +427,32 @@ router.patch("/:id", async (req, res, next) => {
       `${REQ_LIST_SQL} WHERE r.id = ?`,
       [id],
     );
-    res.json(
-      serializeRequirementListRow((rows as RequirementListRow[])[0]),
-    );
+    const updated = (rows as RequirementListRow[])[0];
+    res.json(serializeRequirementListRow(updated));
+
+    // Notify new assignee if changed and not assigning to self
+    if (
+      body.assigneeId !== undefined &&
+      body.assigneeId !== null &&
+      body.assigneeId !== existing.assignee_id &&
+      body.assigneeId !== me.id
+    ) {
+      const users = await getUserEmails([body.assigneeId]);
+      const assignee = users.get(body.assigneeId);
+      if (assignee) {
+        sendEmail(
+          [assignee.email],
+          `Task assigned to you: ${updated.title}`,
+          taskAssignedTemplate({
+            taskId: id,
+            taskTitle: updated.title,
+            assignerName: me.name,
+            priority: updated.priority,
+            projectName: updated.project_name,
+          }),
+        );
+      }
+    }
   } catch (err) {
     next(err);
   }
@@ -455,9 +515,32 @@ router.post("/:id/transition", async (req, res, next) => {
       `${REQ_LIST_SQL} WHERE r.id = ?`,
       [id],
     );
-    res.json(
-      serializeRequirementListRow((rows as RequirementListRow[])[0]),
+    const updated = (rows as RequirementListRow[])[0];
+    res.json(serializeRequirementListRow(updated));
+
+    // Notify developer (creator) and tester (if set), but not the actor themselves
+    const notifyIds = [existing.developer_id, existing.tester_id].filter(
+      (uid): uid is number => uid !== null && uid !== me.id,
     );
+    if (notifyIds.length > 0) {
+      const users = await getUserEmails(notifyIds);
+      const emails = notifyIds.map((uid) => users.get(uid)?.email).filter((e): e is string => !!e);
+      if (emails.length > 0) {
+        sendEmail(
+          emails,
+          `Task status updated: ${updated.title}`,
+          statusTransitionTemplate({
+            taskId: id,
+            taskTitle: updated.title,
+            actorName: me.name,
+            fromStatus: existing.status,
+            toStatus: body.toStatus,
+            projectName: updated.project_name,
+            note: body.note,
+          }),
+        );
+      }
+    }
   } catch (err) {
     next(err);
   }
