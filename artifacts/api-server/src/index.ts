@@ -1,4 +1,11 @@
-import "dotenv/config";
+import { config } from "dotenv";
+import { resolve } from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+// Walk up from src/ (or dist/) to the project root to find .env
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: resolve(__dirname, "../../../.env") });
 import app from "./app";
 import { logger } from "./lib/logger";
 
