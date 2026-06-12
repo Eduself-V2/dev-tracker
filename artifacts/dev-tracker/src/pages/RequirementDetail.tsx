@@ -54,6 +54,18 @@ import {
 } from "lucide-react";
 import { format, formatDistanceToNow, isSameDay } from "date-fns";
 
+function renderWithLinks(text: string) {
+  const parts = text.split(/(https?:\/\/[^\s<>"]+)/g);
+  return parts.map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+        className="text-primary underline break-all hover:opacity-80">
+        {part}
+      </a>
+    ) : part
+  );
+}
+
 type Transition = {
   status: TransitionRequirementToStatus;
   label: string;
@@ -210,7 +222,7 @@ function TimelineView({ events, expanded, onToggle }: { events: any[]; expanded:
                     )}
                     {event.note && (
                       <p className="mt-1.5 text-xs text-muted-foreground bg-muted/30 rounded-md px-2.5 py-2 italic leading-relaxed">
-                        "{event.note}"
+                        "{renderWithLinks(event.note)}"
                       </p>
                     )}
                   </div>
@@ -554,7 +566,7 @@ export default function RequirementDetail() {
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               {requirement.description ? (
-                <p className="whitespace-pre-wrap text-foreground/90 leading-relaxed">{requirement.description}</p>
+                <p className="whitespace-pre-wrap text-foreground/90 leading-relaxed">{renderWithLinks(requirement.description)}</p>
               ) : (
                 <p className="text-muted-foreground italic">No description provided.</p>
               )}
@@ -644,7 +656,7 @@ export default function RequirementDetail() {
                           ) : (
                             <div className="space-y-2">
                               <div className="bg-muted/40 p-3 rounded-lg rounded-tl-none border border-border/50 text-sm">
-                                <p className="whitespace-pre-wrap">{comment.body}</p>
+                                <p className="whitespace-pre-wrap">{renderWithLinks(comment.body)}</p>
                               </div>
                               {cmtAttachments.length > 0 && (
                                 <AttachmentList attachments={cmtAttachments} reqId={reqId} onDeleted={handleAttachmentDeleted} />
