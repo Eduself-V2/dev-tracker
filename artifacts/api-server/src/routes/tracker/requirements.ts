@@ -522,7 +522,6 @@ router.post("/:id/transition", async (req, res, next) => {
     const notifyIds = [existing.developer_id, existing.tester_id].filter(
       (uid): uid is number => uid !== null && uid !== me.id,
     );
-    console.log(`[SES] transition req=${id} actor=${me.id} developer=${existing.developer_id} tester=${existing.tester_id ?? "none"} notifyIds=[${notifyIds}]`);
     if (notifyIds.length > 0) {
       const users = await getUserEmails(notifyIds);
       const emails = notifyIds.map((uid) => users.get(uid)?.email).filter((e): e is string => !!e);
