@@ -23,10 +23,14 @@ export async function sendEmail(
     return;
   }
   const filtered = to.filter(Boolean);
-  if (filtered.length === 0) return;
+  if (filtered.length === 0) {
+    console.warn("[SES] No recipients — skipping email:", subject);
+    return;
+  }
 
+  console.log(`[SES] Sending "${subject}" from=${from} to=${filtered.join(", ")}`);
   try {
-    await ses.send(
+    const result = await ses.send(
       new SendEmailCommand({
         Source: from,
         Destination: { ToAddresses: filtered },
@@ -36,7 +40,9 @@ export async function sendEmail(
         },
       }),
     );
-  } catch (err) {
-    console.error("[SES] Failed to send email:", err);
+    console.log(`[SES] Sent OK — MessageId: ${result.MessageId}`);
+  } catch (err: unknown) {
+    const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number } };
+    console.error(`[SES] Send failed — ${e.name}: ${e.message} (HTTP ${e.$metadata?.httpStatusCode})`);
   }
 }
