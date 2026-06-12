@@ -519,9 +519,30 @@ router.post("/:id/transition", async (req, res, next) => {
     res.json(serializeRequirementListRow(updated));
 
     // Notify developer (creator) and tester (if set), but not the actor themselves
-    const notifyIds = [existing.developer_id, existing.tester_id].filter(
-      (uid): uid is number => uid !== null && uid !== me.id,
-    );
+    // Also notify assignee when status moves to needs_fix
+    let notifyUserIds: (number | null)[];
+    if (body.toStatus === "open" || body.toStatus === "confirmed") {
+      notifyUserIds = [existing.developer_id];
+    } else if (body.toStatus === "in_testing") {
+      // If tester is assigned notify them, otherwise fall back to creator
+      notifyUserIds = existing.tester_id !== null
+        ? [existing.tester_id]
+        : [existing.developer_id];
+    } else if (body.toStatus === "pushed_to_production") {
+      // All admins + creator (dedup handles the case where creator is also an admin)
+      const [adminRows] = await trackerPool.query(
+        "SELECT id FROM users WHERE role = 'admin'",
+      );
+      notifyUserIds = (adminRows as Array<{ id: number }>).map((r) => r.id);
+      notifyUserIds.push(existing.developer_id);
+    } else {
+      // needs_fix
+      notifyUserIds = [existing.developer_id, existing.tester_id, existing.assignee_id];
+    }
+
+    const notifyIds = [...new Set(
+      notifyUserIds.filter((uid): uid is number => uid !== null && uid !== me.id),
+    )];
     if (notifyIds.length > 0) {
       const users = await getUserEmails(notifyIds);
       const emails = notifyIds.map((uid) => users.get(uid)?.email).filter((e): e is string => !!e);
