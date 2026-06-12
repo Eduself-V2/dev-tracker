@@ -92,4 +92,115 @@ router.get("/summary", async (req, res, next) => {
   }
 });
 
+router.get("/report", async (req, res, next) => {
+  try {
+    const me = req.trackerUser!;
+    const { userId, startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "startDate and endDate are required" });
+    }
+
+    // Non-admins can only query their own data
+    if (me.role !== "admin" && userId && Number(userId) !== me.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const targetUserId: number | null =
+      me.role === "admin" ? (userId ? Number(userId) : null) : me.id;
+
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
+    end.setHours(23, 59, 59, 999);
+
+    const userWhere = targetUserId ? "WHERE u.id = ?" : "";
+    const userParam = targetUserId ? [targetUserId] : [];
+
+    const [users] = await trackerPool.query(
+      `SELECT id, name FROM users ${userWhere} ORDER BY name`,
+      userParam,
+    );
+
+    const uid = targetUserId;
+    const [createdRows] = await trackerPool.query(
+      `SELECT r.developer_id AS user_id, COUNT(*) AS cnt
+       FROM requirements r
+       WHERE r.created_at BETWEEN ? AND ?
+         ${uid ? "AND r.developer_id = ?" : ""}
+       GROUP BY r.developer_id`,
+      uid ? [start, end, uid] : [start, end],
+    );
+
+    const [assignedRows] = await trackerPool.query(
+      `SELECT user_id, COUNT(DISTINCT req_id) AS cnt FROM (
+         SELECT r.developer_id AS user_id, r.id AS req_id FROM requirements r
+           WHERE r.created_at BETWEEN ? AND ? ${uid ? "AND r.developer_id = ?" : ""}
+         UNION ALL
+         SELECT r.tester_id, r.id FROM requirements r
+           WHERE r.tester_id IS NOT NULL AND r.created_at BETWEEN ? AND ? ${uid ? "AND r.tester_id = ?" : ""}
+         UNION ALL
+         SELECT r.assignee_id, r.id FROM requirements r
+           WHERE r.assignee_id IS NOT NULL AND r.created_at BETWEEN ? AND ? ${uid ? "AND r.assignee_id = ?" : ""}
+       ) t GROUP BY user_id`,
+      uid
+        ? [start, end, uid, start, end, uid, start, end, uid]
+        : [start, end, start, end, start, end],
+    );
+
+    const [transitionRows] = await trackerPool.query(
+      `SELECT e.actor_id AS user_id, e.to_status, COUNT(*) AS cnt
+       FROM requirement_events e
+       WHERE e.kind = 'transitioned' AND e.created_at BETWEEN ? AND ?
+         ${uid ? "AND e.actor_id = ?" : ""}
+       GROUP BY e.actor_id, e.to_status`,
+      uid ? [start, end, uid] : [start, end],
+    );
+
+    const [commentRows] = await trackerPool.query(
+      `SELECT c.author_id AS user_id, COUNT(*) AS cnt
+       FROM requirement_comments c
+       WHERE c.created_at BETWEEN ? AND ?
+         ${uid ? "AND c.author_id = ?" : ""}
+       GROUP BY c.author_id`,
+      uid ? [start, end, uid] : [start, end],
+    );
+
+    const createdMap: Record<number, number> = {};
+    for (const r of createdRows as Array<{ user_id: number; cnt: number }>)
+      createdMap[r.user_id] = Number(r.cnt);
+
+    const assignedMap: Record<number, number> = {};
+    for (const r of assignedRows as Array<{ user_id: number; cnt: number }>)
+      assignedMap[r.user_id] = Number(r.cnt);
+
+    const transMap: Record<number, Record<string, number>> = {};
+    for (const r of transitionRows as Array<{ user_id: number; to_status: string; cnt: number }>) {
+      if (!transMap[r.user_id]) transMap[r.user_id] = {};
+      transMap[r.user_id][r.to_status] = Number(r.cnt);
+    }
+
+    const commentMap: Record<number, number> = {};
+    for (const r of commentRows as Array<{ user_id: number; cnt: number }>)
+      commentMap[r.user_id] = Number(r.cnt);
+
+    const result = (users as Array<{ id: number; name: string }>).map((u) => ({
+      userId: u.id,
+      userName: u.name,
+      tasksCreated: createdMap[u.id] ?? 0,
+      tasksAssigned: assignedMap[u.id] ?? 0,
+      statusTransitions: {
+        open: transMap[u.id]?.open ?? 0,
+        in_testing: transMap[u.id]?.in_testing ?? 0,
+        needs_fix: transMap[u.id]?.needs_fix ?? 0,
+        confirmed: transMap[u.id]?.confirmed ?? 0,
+        pushed_to_production: transMap[u.id]?.pushed_to_production ?? 0,
+      },
+      comments: commentMap[u.id] ?? 0,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
