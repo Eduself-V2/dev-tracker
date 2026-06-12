@@ -187,7 +187,7 @@ export default function RequirementCreate() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Project</FormLabel>
-                      <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString()}>
+                      <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString() ?? ""}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a project" />

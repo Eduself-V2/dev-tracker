@@ -227,7 +227,7 @@ export default function RequirementEdit() {
                       <FormLabel>Project</FormLabel>
                       <Select
                         onValueChange={(val) => field.onChange(parseInt(val))}
-                        value={field.value?.toString()}
+                        value={field.value?.toString() ?? ""}
                       >
                         <FormControl>
                           <SelectTrigger>
