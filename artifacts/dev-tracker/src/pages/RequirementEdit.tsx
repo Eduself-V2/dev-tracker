@@ -67,13 +67,13 @@ export default function RequirementEdit() {
     },
   });
 
-  const { data: users } = useTrackerListUsers({
+  const { data: users, isLoading: isLoadingUsers } = useTrackerListUsers({
     query: {
       queryKey: getTrackerListUsersQueryKey(),
     },
   });
 
-  const { data: projects } = useTrackerListProjects();
+  const { data: projects, isLoading: isLoadingProjects } = useTrackerListProjects();
 
   const updateMutation = useTrackerUpdateRequirement({
     mutation: {
@@ -145,7 +145,7 @@ export default function RequirementEdit() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || isLoadingUsers || isLoadingProjects) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <Skeleton className="h-10 w-48" />
