@@ -101,7 +101,7 @@ export default function Reports() {
 
   const userId = isAdmin ? (selectedUserId === "all" ? undefined : selectedUserId) : user?.id;
 
-  const { data: report, isLoading } = useQuery<UserReport[]>({
+  const { data: report, isLoading, isError } = useQuery<UserReport[]>({
     queryKey: ["/api/tracker/stats/report", userId, startDate, endDate],
     queryFn: async () => {
       const params = new URLSearchParams({ startDate, endDate });
@@ -207,7 +207,15 @@ export default function Reports() {
         </div>
       )}
 
-      {!isLoading && report && report.length === 0 && (
+      {isError && (
+        <Card className="shadow-sm border-destructive/40">
+          <CardContent className="pt-6 pb-6 text-center text-destructive">
+            Failed to load report. Please try again.
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading && !isError && report && report.length === 0 && (
         <Card className="shadow-sm">
           <CardContent className="pt-12 pb-12 text-center text-muted-foreground">
             No activity found for the selected period.
@@ -216,7 +224,7 @@ export default function Reports() {
       )}
 
       {/* Single user view */}
-      {!isLoading && singleUser && (
+      {!isLoading && !isError && singleUser && (
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">{singleUser.userName}</h2>
@@ -258,7 +266,7 @@ export default function Reports() {
       )}
 
       {/* All users view */}
-      {!isLoading && !isSingleUser && report && report.length > 0 && (
+      {!isLoading && !isError && !isSingleUser && report && report.length > 0 && (
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">All Users</h2>

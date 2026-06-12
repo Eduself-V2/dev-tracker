@@ -112,7 +112,7 @@ router.get("/report", async (req, res, next) => {
     const end = new Date(endDate as string);
     end.setHours(23, 59, 59, 999);
 
-    const userWhere = targetUserId ? "WHERE u.id = ?" : "";
+    const userWhere = targetUserId ? "WHERE id = ?" : "";
     const userParam = targetUserId ? [targetUserId] : [];
 
     const [users] = await trackerPool.query(
