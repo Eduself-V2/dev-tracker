@@ -15,7 +15,7 @@ export interface UpdateRequirement {
   title?: string;
   description?: string | null;
   priority?: UpdateRequirementPriority;
-  testerId?: number | null;
+  testerIds?: number[];
   assigneeId?: number | null;
   projectId?: number;
 }

@@ -38,14 +38,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, ArrowLeft, Loader2, Save } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, ChevronsUpDown, Loader2, Save } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title is too long"),
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high"] as const),
-  testerId: z.coerce.number().optional().nullable(),
+  testerIds: z.array(z.number()).optional(),
   assigneeId: z.coerce.number().optional().nullable(),
   projectId: z.coerce.number().min(1, "Project is required"),
 });
@@ -95,7 +99,7 @@ export default function RequirementEdit() {
       title: "",
       description: "",
       priority: "medium",
-      testerId: null,
+      testerIds: [],
       assigneeId: null,
       projectId: undefined,
     },
@@ -109,7 +113,7 @@ export default function RequirementEdit() {
         title: r.title,
         description: r.description ?? "",
         priority: r.priority as "low" | "medium" | "high",
-        testerId: r.testerId ?? null,
+        testerIds: r.testerIds ?? [],
         assigneeId: r.assigneeId ?? null,
         projectId: r.projectId,
       });
@@ -161,7 +165,7 @@ export default function RequirementEdit() {
         title: values.title,
         description: values.description,
         priority: values.priority,
-        testerId: values.testerId ?? null,
+        testerIds: values.testerIds ?? [],
         assigneeId: values.assigneeId ?? null,
         projectId: values.projectId,
       },
@@ -301,28 +305,53 @@ export default function RequirementEdit() {
 
                 <FormField
                   control={form.control}
-                  name="testerId"
+                  name="testerIds"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>QA / Tester (Optional)</FormLabel>
-                      <Select
-                        onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))}
-                        value={field.value?.toString() ?? "none"}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select QA person" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Unassigned</SelectItem>
-                          {allUsers.map((u) => (
-                            <SelectItem key={u.id} value={u.id.toString()}>
-                              {u.name} ({u.role})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>QA / Testers (Optional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                              {(field.value?.length ?? 0) === 0
+                                ? <span className="text-muted-foreground">Select testers...</span>
+                                : <span className="flex flex-wrap gap-1">
+                                    {field.value!.map((id) => {
+                                      const u = allUsers.find((u) => u.id === id);
+                                      return <Badge key={id} variant="secondary" className="text-xs">{u?.name ?? id}</Badge>;
+                                    })}
+                                  </span>}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search users..." />
+                            <CommandList>
+                              <CommandEmpty>No users found.</CommandEmpty>
+                              <CommandGroup>
+                                {allUsers.map((u) => (
+                                  <CommandItem
+                                    key={u.id}
+                                    onSelect={() => {
+                                      const current = field.value ?? [];
+                                      field.onChange(
+                                        current.includes(u.id)
+                                          ? current.filter((id) => id !== u.id)
+                                          : [...current, u.id],
+                                      );
+                                    }}
+                                  >
+                                    <Check className={cn("mr-2 h-4 w-4", field.value?.includes(u.id) ? "opacity-100" : "opacity-0")} />
+                                    {u.name} ({u.role})
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}

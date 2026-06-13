@@ -51,7 +51,10 @@ import {
   Image,
   Download,
   Loader2,
+  Bell,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { format, formatDistanceToNow, isSameDay } from "date-fns";
 
 function renderWithLinks(text: string) {
@@ -303,6 +306,9 @@ export default function RequirementDetail() {
   const [deletingComment, setDeletingComment] = useState(false);
   const [deleteReqOpen, setDeleteReqOpen] = useState(false);
   const [deletingReq, setDeletingReq] = useState(false);
+  const [alertUserIds, setAlertUserIds] = useState<number[]>([]);
+  const [alertMessage, setAlertMessage] = useState("");
+  const [sendingAlert, setSendingAlert] = useState(false);
 
   const commentMutation = useTrackerAddComment({
     mutation: {
@@ -471,6 +477,43 @@ export default function RequirementDetail() {
 
   const isCommentPosting = commentMutation.isPending || uploadingComment;
 
+  const handleSendAlert = async () => {
+    if (alertUserIds.length === 0) return;
+    setSendingAlert(true);
+    try {
+      const res = await fetch(`/api/tracker/requirements/${reqId}/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userIds: alertUserIds, message: alertMessage || undefined }),
+      });
+      if (!res.ok) throw new Error();
+      const { sent } = await res.json();
+      toast({ title: `Alert sent to ${sent} recipient${sent !== 1 ? "s" : ""}` });
+      setAlertUserIds([]);
+      setAlertMessage("");
+    } catch {
+      toast({ title: "Failed to send alert", variant: "destructive" });
+    } finally {
+      setSendingAlert(false);
+    }
+  };
+
+  // Build the list of people involved in this requirement (for the alert panel)
+  const involvedPeople: { id: number; name: string; role: string }[] = [];
+  if (requirement) {
+    const seenIds = new Set<number>();
+    const addPerson = (id: number | undefined | null, name: string | undefined | null, role: string) => {
+      if (id && name && !seenIds.has(id)) {
+        seenIds.add(id);
+        involvedPeople.push({ id, name, role });
+      }
+    };
+    addPerson(requirement.developerId, requirement.developerName, "Creator");
+    addPerson(requirement.assigneeId, requirement.assigneeName, "Assignee");
+    requirement.testerIds?.forEach((tid, i) => addPerson(tid, requirement.testerNames?.[i], "QA"));
+  }
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-500 pb-20">
       <div className="flex items-center justify-between gap-4">
@@ -531,9 +574,16 @@ export default function RequirementDetail() {
             <Avatar className="w-5 h-5"><AvatarFallback className="text-[10px]">{requirement.assigneeName ? requirement.assigneeName.charAt(0) : requirement.developerName.charAt(0)}</AvatarFallback></Avatar>
             Assigned: <span className="font-medium text-foreground">{requirement.assigneeName || requirement.developerName}</span>
           </span>
-          <span className="flex items-center gap-2">
-            <Avatar className="w-5 h-5"><AvatarFallback className="text-[10px]">{requirement.testerName ? requirement.testerName.charAt(0) : '?'}</AvatarFallback></Avatar>
-            QA: <span className="font-medium text-foreground">{requirement.testerName || "Unassigned"}</span>
+          <span className="flex items-center gap-2 flex-wrap">
+            QA:{" "}
+            {(requirement.testerNames?.length ?? 0) === 0
+              ? <span className="font-medium text-foreground">Unassigned</span>
+              : requirement.testerNames!.map((name, i) => (
+                  <span key={i} className="flex items-center gap-1">
+                    <Avatar className="w-5 h-5"><AvatarFallback className="text-[10px]">{name.charAt(0)}</AvatarFallback></Avatar>
+                    <span className="font-medium text-foreground">{name}</span>
+                  </span>
+                ))}
           </span>
           <span className="flex items-center gap-1.5">
             <Activity className="w-4 h-4" />
@@ -752,6 +802,64 @@ export default function RequirementDetail() {
               )}
             </CardContent>
           </Card>
+
+          {user?.role === "admin" && (
+            <Card className="shadow-sm border-amber-500/20 bg-amber-500/5">
+              <CardHeader className="pb-3 border-b bg-background/50">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  Send Alert Email
+                </CardTitle>
+                <CardDescription>Notify people about this task without changing its status.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <div className="space-y-2">
+                  {involvedPeople.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No people associated yet.</p>
+                  ) : (
+                    involvedPeople.map((person) => (
+                      <div key={person.id} className="flex items-center gap-3">
+                        <Checkbox
+                          id={`alert-user-${person.id}`}
+                          checked={alertUserIds.includes(person.id)}
+                          onCheckedChange={(checked) =>
+                            setAlertUserIds((prev) =>
+                              checked ? [...prev, person.id] : prev.filter((id) => id !== person.id),
+                            )
+                          }
+                        />
+                        <Label htmlFor={`alert-user-${person.id}`} className="flex items-center gap-2 cursor-pointer text-sm font-normal">
+                          <Avatar className="w-6 h-6">
+                            <AvatarFallback className="text-[10px]">{person.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <span>{person.name}</span>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{person.role}</Badge>
+                        </Label>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <Textarea
+                  placeholder="Optional message to include in the alert..."
+                  value={alertMessage}
+                  onChange={(e) => setAlertMessage(e.target.value)}
+                  className="text-sm min-h-[80px] bg-background resize-none"
+                />
+                <Button
+                  className="w-full gap-2"
+                  onClick={handleSendAlert}
+                  disabled={alertUserIds.length === 0 || sendingAlert}
+                >
+                  {sendingAlert ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Bell className="w-4 h-4" />
+                  )}
+                  {sendingAlert ? "Sending..." : `Send Alert${alertUserIds.length > 0 ? ` (${alertUserIds.length})` : ""}`}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

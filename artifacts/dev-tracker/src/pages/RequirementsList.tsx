@@ -356,7 +356,7 @@ export default function RequirementsList() {
                         </span>
                         <span className="flex items-center gap-1.5">
                           <div className="w-2 h-2 rounded-full bg-secondary-foreground/40"></div>
-                          QA: <span className="font-medium text-foreground">{req.testerName || "Unassigned"}</span>
+                          QA: <span className="font-medium text-foreground">{req.testerNames?.join(", ") || "Unassigned"}</span>
                         </span>
                         <span className="flex items-center gap-1.5">
                           <FolderKanban className="w-3.5 h-3.5 text-muted-foreground" />

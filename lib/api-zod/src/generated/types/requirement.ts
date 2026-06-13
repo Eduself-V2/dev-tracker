@@ -16,8 +16,8 @@ export interface Requirement {
   priority: RequirementPriority;
   developerId: number;
   developerName: string;
-  testerId?: number | null;
-  testerName?: string | null;
+  testerIds?: number[];
+  testerNames?: string[];
   assigneeId?: number | null;
   assigneeName?: string | null;
   projectId: number;

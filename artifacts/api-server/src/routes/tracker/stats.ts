@@ -45,11 +45,17 @@ router.get("/summary", async (req, res, next) => {
     ];
 
     const [recentRows] = await trackerPool.query(
-      `SELECT r.*, d.name AS developer_name, t.name AS tester_name, a.name AS assignee_name, p.name AS project_name,
+      `SELECT r.*,
+              ANY_VALUE(d.name) AS developer_name,
+              GROUP_CONCAT(DISTINCT rt.tester_id ORDER BY rt.tester_id SEPARATOR ',') AS tester_ids,
+              GROUP_CONCAT(DISTINCT t.name ORDER BY rt.tester_id SEPARATOR ',') AS tester_names,
+              ANY_VALUE(a.name) AS assignee_name,
+              ANY_VALUE(p.name) AS project_name,
               GREATEST(r.updated_at, COALESCE(MAX(e.created_at), r.updated_at)) AS last_activity_at
        FROM requirements r
        JOIN users d ON d.id = r.developer_id
-       LEFT JOIN users t ON t.id = r.tester_id
+       LEFT JOIN requirement_testers rt ON rt.requirement_id = r.id
+       LEFT JOIN users t ON t.id = rt.tester_id
        LEFT JOIN users a ON a.id = r.assignee_id
        JOIN projects p ON p.id = r.project_id
        LEFT JOIN requirement_events e ON e.requirement_id = r.id
@@ -76,8 +82,8 @@ router.get("/summary", async (req, res, next) => {
         priority: r.priority,
         developerId: r.developer_id,
         developerName: r.developer_name,
-        testerId: r.tester_id,
-        testerName: r.tester_name,
+        testerIds: r.tester_ids ? r.tester_ids.split(",").map(Number) : [],
+        testerNames: r.tester_names ? r.tester_names.split(",") : [],
         assigneeId: r.assignee_id,
         assigneeName: r.assignee_name,
         testCycles: r.test_cycles,
@@ -135,8 +141,9 @@ router.get("/report", async (req, res, next) => {
          SELECT r.developer_id AS user_id, r.id AS req_id FROM requirements r
            WHERE r.created_at BETWEEN ? AND ? ${uid ? "AND r.developer_id = ?" : ""}
          UNION ALL
-         SELECT r.tester_id, r.id FROM requirements r
-           WHERE r.tester_id IS NOT NULL AND r.created_at BETWEEN ? AND ? ${uid ? "AND r.tester_id = ?" : ""}
+         SELECT rt2.tester_id AS user_id, rt2.requirement_id AS req_id
+           FROM requirement_testers rt2 JOIN requirements r ON r.id = rt2.requirement_id
+           WHERE r.created_at BETWEEN ? AND ? ${uid ? "AND rt2.tester_id = ?" : ""}
          UNION ALL
          SELECT r.assignee_id, r.id FROM requirements r
            WHERE r.assignee_id IS NOT NULL AND r.created_at BETWEEN ? AND ? ${uid ? "AND r.assignee_id = ?" : ""}
