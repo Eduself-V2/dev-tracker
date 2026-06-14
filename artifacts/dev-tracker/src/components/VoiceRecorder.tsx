@@ -41,7 +41,9 @@ export default function VoiceRecorder({ onRecorded }: Props) {
       };
       mr.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
-        const mimeType = mr.mimeType || "audio/webm";
+        // Strip codec suffix (e.g. "audio/webm;codecs=opus" → "audio/webm") so the
+        // backend MIME allowlist can do a simple exact match.
+        const mimeType = (mr.mimeType || "audio/webm").split(";")[0];
         const blob = new Blob(chunksRef.current, { type: mimeType });
         const ext = mimeType.includes("ogg") ? "ogg" : mimeType.includes("mp4") ? "m4a" : "webm";
         const file = new File([blob], `voice-note-${Date.now()}.${ext}`, { type: mimeType });
