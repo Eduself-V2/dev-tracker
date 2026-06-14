@@ -15,6 +15,12 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "text/csv",
   "application/csv",
+  "audio/webm",
+  "audio/ogg",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/wav",
+  "audio/x-m4a",
 ]);
 
 const upload = multer({
@@ -24,7 +30,7 @@ const upload = multer({
     if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: images, PDF, Excel, CSV`));
+      cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: images, PDF, Excel, CSV, audio`));
     }
   },
 });

@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import FileUploadZone from "@/components/FileUploadZone";
+import VoiceRecorder from "@/components/VoiceRecorder";
 import {
   ArrowLeft,
   Clock,
@@ -52,6 +53,8 @@ import {
   Download,
   Loader2,
   Bell,
+  Mic,
+  Volume2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -92,6 +95,7 @@ type Attachment = {
 function attachmentIcon(mimeType: string) {
   if (mimeType.startsWith("image/")) return <Image className="w-4 h-4 text-blue-500 shrink-0" />;
   if (mimeType === "application/pdf") return <FileText className="w-4 h-4 text-red-500 shrink-0" />;
+  if (mimeType.startsWith("audio/")) return <Mic className="w-4 h-4 text-violet-500 shrink-0" />;
   return <FileSpreadsheet className="w-4 h-4 text-green-600 shrink-0" />;
 }
 
@@ -125,34 +129,63 @@ function AttachmentList({ attachments, reqId, onDeleted }: { attachments: Attach
   return (
     <ul className="space-y-1.5">
       {attachments.map((att) => (
-        <li key={att.id} className="flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-sm border border-border/40">
-          {att.mimeType.startsWith("image/") ? (
-            <a href={att.s3Url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 flex-1 min-w-0 group">
-              <img src={att.s3Url} alt={att.originalName} className="w-8 h-8 object-cover rounded border" />
-              <span className="truncate group-hover:text-primary transition-colors">{att.originalName}</span>
-            </a>
+        <li key={att.id} className="rounded-md bg-muted/40 border border-border/40 text-sm overflow-hidden">
+          {att.mimeType.startsWith("audio/") ? (
+            <div className="px-2.5 py-2 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Volume2 className="w-4 h-4 text-violet-500 shrink-0" />
+                <span className="flex-1 truncate min-w-0 text-muted-foreground">{att.originalName}</span>
+                <span className="text-[11px] text-muted-foreground shrink-0">{formatBytes(att.sizeBytes)}</span>
+                <a href={att.s3Url} download={att.originalName} target="_blank" rel="noopener noreferrer">
+                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" title="Download">
+                    <Download className="w-3 h-3" />
+                  </Button>
+                </a>
+                {(user?.role === "admin" || user?.id === att.uploadedBy) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0 hover:bg-destructive/10"
+                    title="Delete"
+                    onClick={() => handleDelete(att)}
+                  >
+                    <Trash2 className="w-3 h-3 text-destructive/70" />
+                  </Button>
+                )}
+              </div>
+              <audio controls src={att.s3Url} className="w-full h-9" />
+            </div>
           ) : (
-            <a href={att.s3Url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 flex-1 min-w-0 group">
-              {attachmentIcon(att.mimeType)}
-              <span className="truncate group-hover:text-primary transition-colors">{att.originalName}</span>
-            </a>
-          )}
-          <span className="text-[11px] text-muted-foreground shrink-0">{formatBytes(att.sizeBytes)}</span>
-          <a href={att.s3Url} download={att.originalName} target="_blank" rel="noopener noreferrer">
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" title="Download">
-              <Download className="w-3 h-3" />
-            </Button>
-          </a>
-          {(user?.role === "admin" || user?.id === att.uploadedBy) && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 shrink-0 hover:bg-destructive/10"
-              title="Delete"
-              onClick={() => handleDelete(att)}
-            >
-              <Trash2 className="w-3 h-3 text-destructive/70" />
-            </Button>
+            <div className="flex items-center gap-2 px-2.5 py-1.5">
+              {att.mimeType.startsWith("image/") ? (
+                <a href={att.s3Url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 flex-1 min-w-0 group">
+                  <img src={att.s3Url} alt={att.originalName} className="w-8 h-8 object-cover rounded border" />
+                  <span className="truncate group-hover:text-primary transition-colors">{att.originalName}</span>
+                </a>
+              ) : (
+                <a href={att.s3Url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 flex-1 min-w-0 group">
+                  {attachmentIcon(att.mimeType)}
+                  <span className="truncate group-hover:text-primary transition-colors">{att.originalName}</span>
+                </a>
+              )}
+              <span className="text-[11px] text-muted-foreground shrink-0">{formatBytes(att.sizeBytes)}</span>
+              <a href={att.s3Url} download={att.originalName} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" title="Download">
+                  <Download className="w-3 h-3" />
+                </Button>
+              </a>
+              {(user?.role === "admin" || user?.id === att.uploadedBy) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 hover:bg-destructive/10"
+                  title="Delete"
+                  onClick={() => handleDelete(att)}
+                >
+                  <Trash2 className="w-3 h-3 text-destructive/70" />
+                </Button>
+              )}
+            </div>
           )}
         </li>
       ))}
@@ -395,8 +428,10 @@ export default function RequirementDetail() {
   };
 
   const handlePostComment = () => {
-    if (!commentBody.trim()) return;
-    commentMutation.mutate({ id: reqId, data: { body: commentBody } });
+    const hasAudio = commentFiles.some((f) => f.type.startsWith("audio/"));
+    const body = commentBody.trim() || (hasAudio ? "[Voice note]" : "");
+    if (!body) return;
+    commentMutation.mutate({ id: reqId, data: { body } });
   };
 
   const canEditComment = (comment: any) => {
@@ -734,10 +769,11 @@ export default function RequirementDetail() {
                     className="min-h-[100px] resize-y bg-background"
                   />
                   <FileUploadZone files={commentFiles} onChange={setCommentFiles} compact />
+                  <VoiceRecorder onRecorded={(file) => setCommentFiles((prev) => [...prev, file])} />
                   <div className="flex justify-end">
                     <Button
                       onClick={handlePostComment}
-                      disabled={!commentBody.trim() || isCommentPosting}
+                      disabled={(!commentBody.trim() && !commentFiles.some((f) => f.type.startsWith("audio/"))) || isCommentPosting}
                     >
                       {isCommentPosting ? (uploadingComment ? "Uploading..." : "Posting...") : "Post Comment"}
                     </Button>

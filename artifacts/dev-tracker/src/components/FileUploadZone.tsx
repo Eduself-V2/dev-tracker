@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Paperclip, X, FileText, FileSpreadsheet, Image, Upload } from "lucide-react";
+import { Paperclip, X, FileText, FileSpreadsheet, Image, Upload, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const ACCEPTED = ".jpg,.jpeg,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv";
@@ -22,6 +22,7 @@ interface Props {
 function fileIcon(type: string) {
   if (type.startsWith("image/")) return <Image className="w-4 h-4 text-blue-500" />;
   if (type === "application/pdf") return <FileText className="w-4 h-4 text-red-500" />;
+  if (type.startsWith("audio/")) return <Mic className="w-4 h-4 text-violet-500" />;
   return <FileSpreadsheet className="w-4 h-4 text-green-600" />;
 }
 
