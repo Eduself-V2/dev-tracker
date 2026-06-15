@@ -352,7 +352,11 @@ export default function RequirementsList() {
                         </span>
                         <span className="flex items-center gap-1.5">
                           <div className="w-2 h-2 rounded-full bg-emerald-500/60"></div>
-                          Assigned: <span className="font-medium text-foreground">{req.assigneeName || req.developerName}</span>
+                          Assigned: <span className="font-medium text-foreground">
+                            {((req as any).assigneeNames?.length ?? 0) > 0
+                              ? (req as any).assigneeNames!.join(", ")
+                              : req.developerName}
+                          </span>
                         </span>
                         <span className="flex items-center gap-1.5">
                           <div className="w-2 h-2 rounded-full bg-secondary-foreground/40"></div>

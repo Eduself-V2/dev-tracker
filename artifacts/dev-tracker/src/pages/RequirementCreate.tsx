@@ -35,7 +35,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high"] as const),
   testerIds: z.array(z.number()).optional(),
-  assigneeId: z.coerce.number().optional().nullable(),
+  assigneeIds: z.array(z.number()).optional(),
   projectId: z.coerce.number().min(1, "Project is required"),
 });
 
@@ -101,7 +101,7 @@ export default function RequirementCreate() {
       description: "",
       priority: "medium",
       testerIds: [],
-      assigneeId: null,
+      assigneeIds: [],
       projectId: undefined,
     },
   });
@@ -127,7 +127,7 @@ export default function RequirementCreate() {
         description: data.description,
         priority: data.priority as CreateRequirementPriority,
         testerIds: data.testerIds?.length ? data.testerIds : undefined,
-        assigneeId: data.assigneeId || undefined,
+        assigneeIds: data.assigneeIds?.length ? data.assigneeIds : undefined,
         projectId: data.projectId,
       },
     });
@@ -211,23 +211,53 @@ export default function RequirementCreate() {
                 {user?.role === "admin" && (
                   <FormField
                     control={form.control}
-                    name="assigneeId"
+                    name="assigneeIds"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Assign To</FormLabel>
-                        <Select onValueChange={(val) => field.onChange(val === "none" ? null : parseInt(val))} value={field.value?.toString() || "none"}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select assignee" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">Creator (self)</SelectItem>
-                            {(Array.isArray(users) ? users : []).map((u) => (
-                              <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                                {(field.value?.length ?? 0) === 0
+                                  ? <span className="text-muted-foreground">Select assignees...</span>
+                                  : <span className="flex flex-wrap gap-1">
+                                      {field.value!.map((id) => {
+                                        const u = allUsers.find((u) => u.id === id);
+                                        return <Badge key={id} variant="secondary" className="text-xs">{u?.name ?? id}</Badge>;
+                                      })}
+                                    </span>}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search users..." />
+                              <CommandList>
+                                <CommandEmpty>No users found.</CommandEmpty>
+                                <CommandGroup>
+                                  {allUsers.map((u) => (
+                                    <CommandItem
+                                      key={u.id}
+                                      onSelect={() => {
+                                        const current = field.value ?? [];
+                                        field.onChange(
+                                          current.includes(u.id)
+                                            ? current.filter((id) => id !== u.id)
+                                            : [...current, u.id],
+                                        );
+                                      }}
+                                    >
+                                      <Check className={cn("mr-2 h-4 w-4", field.value?.includes(u.id) ? "opacity-100" : "opacity-0")} />
+                                      {u.name} ({u.role})
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}

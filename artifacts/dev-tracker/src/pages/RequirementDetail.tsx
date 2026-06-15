@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -6,8 +6,10 @@ import {
   getTrackerGetRequirementQueryKey,
   useTrackerTransitionRequirement,
   useTrackerAddComment,
+  useTrackerListUsers,
   getTrackerListRequirementsQueryKey,
-  getTrackerStatsSummaryQueryKey
+  getTrackerStatsSummaryQueryKey,
+  getTrackerListUsersQueryKey,
 } from "@workspace/api-client-react";
 import type { TransitionRequirementToStatus } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -55,7 +57,12 @@ import {
   Bell,
   Mic,
   Volume2,
+  UserPlus,
+  ChevronsUpDown,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { format, formatDistanceToNow, isSameDay } from "date-fns";
@@ -356,6 +363,14 @@ export default function RequirementDetail() {
   const [alertUserIds, setAlertUserIds] = useState<number[]>([]);
   const [alertMessage, setAlertMessage] = useState("");
   const [sendingAlert, setSendingAlert] = useState(false);
+  const [delegateOpen, setDelegateOpen] = useState(false);
+  const [delegateUserIds, setDelegateUserIds] = useState<number[]>([]);
+  const [delegating, setDelegating] = useState(false);
+
+  const { data: allUsersData } = useTrackerListUsers({
+    query: { queryKey: getTrackerListUsersQueryKey() },
+  });
+  const allUsers = Array.isArray(allUsersData) ? allUsersData : [];
 
   const commentMutation = useTrackerAddComment({
     mutation: {
@@ -548,6 +563,28 @@ export default function RequirementDetail() {
     }
   };
 
+  const handleDelegate = async () => {
+    if (delegateUserIds.length === 0) return;
+    setDelegating(true);
+    try {
+      const res = await fetch(`/api/tracker/requirements/${reqId}/assignees`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userIds: delegateUserIds }),
+      });
+      if (!res.ok) throw new Error();
+      queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) });
+      toast({ title: "Task delegated successfully" });
+      setDelegateOpen(false);
+      setDelegateUserIds([]);
+    } catch {
+      toast({ title: "Failed to delegate task", variant: "destructive" });
+    } finally {
+      setDelegating(false);
+    }
+  };
+
   // Build the list of people involved in this requirement (for the alert panel)
   const involvedPeople: { id: number; name: string; role: string }[] = [];
   if (requirement) {
@@ -559,7 +596,9 @@ export default function RequirementDetail() {
       }
     };
     addPerson(requirement.developerId, requirement.developerName, "Creator");
-    addPerson(requirement.assigneeId, requirement.assigneeName, "Assignee");
+    (requirement as any).assigneeIds?.forEach((aid: number, i: number) =>
+      addPerson(aid, (requirement as any).assigneeNames?.[i], "Assignee"),
+    );
     requirement.testerIds?.forEach((tid, i) => addPerson(tid, requirement.testerNames?.[i], "QA"));
   }
 
@@ -619,9 +658,16 @@ export default function RequirementDetail() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground mt-2">
-          <span className="flex items-center gap-2">
-            <Avatar className="w-5 h-5"><AvatarFallback className="text-[10px]">{requirement.assigneeName ? requirement.assigneeName.charAt(0) : requirement.developerName.charAt(0)}</AvatarFallback></Avatar>
-            Assigned: <span className="font-medium text-foreground">{requirement.assigneeName || requirement.developerName}</span>
+          <span className="flex items-center gap-2 flex-wrap">
+            Assigned:{" "}
+            {((requirement as any).assigneeNames?.length ?? 0) === 0
+              ? <span className="font-medium text-foreground">{requirement.developerName}</span>
+              : (requirement as any).assigneeNames!.map((name: string, i: number) => (
+                  <span key={i} className="flex items-center gap-1">
+                    <Avatar className="w-5 h-5"><AvatarFallback className="text-[10px]">{name.charAt(0)}</AvatarFallback></Avatar>
+                    <span className="font-medium text-foreground">{name}</span>
+                  </span>
+                ))}
           </span>
           <span className="flex items-center gap-2 flex-wrap">
             QA:{" "}
@@ -826,6 +872,69 @@ export default function RequirementDetail() {
                     </Button>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Delegate card — visible to admins and current assignees */}
+          {(user?.role === "admin" || (requirement as any).assigneeIds?.includes(user?.id)) && (
+            <Card className="shadow-sm border-primary/20">
+              <CardHeader className="pb-3 border-b bg-background/50">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-primary" />
+                  Delegate Task
+                </CardTitle>
+                <CardDescription>Add more people to this task.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-3">
+                <Popover open={delegateOpen} onOpenChange={setDelegateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                      {delegateUserIds.length === 0
+                        ? <span className="text-muted-foreground">Select users to add...</span>
+                        : <span className="flex flex-wrap gap-1">
+                            {delegateUserIds.map((id) => {
+                              const u = allUsers.find((u) => u.id === id);
+                              return <Badge key={id} variant="secondary" className="text-xs">{u?.name ?? id}</Badge>;
+                            })}
+                          </span>}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search users..." />
+                      <CommandList>
+                        <CommandEmpty>No users found.</CommandEmpty>
+                        <CommandGroup>
+                          {allUsers
+                            .filter((u) => !((requirement as any).assigneeIds ?? []).includes(u.id))
+                            .map((u) => (
+                              <CommandItem
+                                key={u.id}
+                                onSelect={() => {
+                                  setDelegateUserIds((prev) =>
+                                    prev.includes(u.id) ? prev.filter((id) => id !== u.id) : [...prev, u.id],
+                                  );
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", delegateUserIds.includes(u.id) ? "opacity-100" : "opacity-0")} />
+                                {u.name} ({u.role})
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  className="w-full gap-2"
+                  onClick={handleDelegate}
+                  disabled={delegateUserIds.length === 0 || delegating}
+                >
+                  {delegating ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                  {delegating ? "Delegating..." : `Delegate${delegateUserIds.length > 0 ? ` (${delegateUserIds.length})` : ""}`}
+                </Button>
               </CardContent>
             </Card>
           )}

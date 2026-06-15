@@ -81,6 +81,22 @@ CREATE TABLE requirement_comments (
   CONSTRAINT fk_cmt_req FOREIGN KEY (requirement_id) REFERENCES requirements (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE requirement_assignees (
+  id int NOT NULL AUTO_INCREMENT,
+  requirement_id int NOT NULL,
+  user_id int NOT NULL,
+  assigned_by_id int NOT NULL,
+  created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_ra_req_user (requirement_id, user_id),
+  KEY fk_ra_req (requirement_id),
+  KEY fk_ra_user (user_id),
+  KEY fk_ra_assignedby (assigned_by_id),
+  CONSTRAINT fk_ra_req FOREIGN KEY (requirement_id) REFERENCES requirements (id) ON DELETE CASCADE,
+  CONSTRAINT fk_ra_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_ra_assignedby FOREIGN KEY (assigned_by_id) REFERENCES users (id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE requirement_attachments (
   id int NOT NULL AUTO_INCREMENT,
   requirement_id int NOT NULL,

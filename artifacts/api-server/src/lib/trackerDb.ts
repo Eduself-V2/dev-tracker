@@ -56,6 +56,8 @@ export interface RequirementListRow extends RequirementRow {
   tester_ids: string | null;
   tester_names: string | null;
   assignee_name: string | null;
+  assignee_ids: string | null;
+  assignee_names: string | null;
   project_name: string;
   last_activity_at?: Date;
 }

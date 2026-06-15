@@ -43,11 +43,11 @@ type Status = RequirementRow["status"];
 
 const ALLOWED_TRANSITIONS: Record<TrackerRole, Record<Status, Status[]>> = {
   admin: {
-    open: ["in_testing", "needs_fix", "confirmed", "pushed_to_production"],
-    in_testing: ["open", "needs_fix", "confirmed", "pushed_to_production"],
-    needs_fix: ["open", "in_testing", "confirmed", "pushed_to_production"],
-    confirmed: ["open", "in_testing", "needs_fix", "pushed_to_production"],
-    pushed_to_production: ["open", "in_testing", "needs_fix", "confirmed"],
+    open: ["in_testing", "confirmed"],
+    in_testing: ["confirmed", "needs_fix"],
+    needs_fix: ["in_testing", "confirmed"],
+    confirmed: ["pushed_to_production", "open"],
+    pushed_to_production: ["open"],
   },
   developer: {
     open: ["in_testing"],
@@ -68,6 +68,8 @@ const ALLOWED_TRANSITIONS: Record<TrackerRole, Record<Status, Status[]>> = {
 function serializeRequirementListRow(r: RequirementListRow) {
   const testerIds = r.tester_ids ? r.tester_ids.split(",").map(Number) : [];
   const testerNames = r.tester_names ? r.tester_names.split(",") : [];
+  const assigneeIds = r.assignee_ids ? r.assignee_ids.split(",").map(Number) : [];
+  const assigneeNames = r.assignee_names ? r.assignee_names.split(",") : [];
   return {
     id: r.id,
     title: r.title,
@@ -78,8 +80,8 @@ function serializeRequirementListRow(r: RequirementListRow) {
     developerName: r.developer_name,
     testerIds,
     testerNames,
-    assigneeId: r.assignee_id,
-    assigneeName: r.assignee_name,
+    assigneeIds,
+    assigneeNames,
     projectId: r.project_id,
     projectName: r.project_name,
     testCycles: r.test_cycles,
@@ -135,12 +137,16 @@ const REQ_LIST_SQL = `
     GROUP_CONCAT(DISTINCT rt.tester_id ORDER BY rt.tester_id SEPARATOR ',') AS tester_ids,
     GROUP_CONCAT(DISTINCT t.name ORDER BY rt.tester_id SEPARATOR ',') AS tester_names,
     ANY_VALUE(a.name) AS assignee_name,
+    GROUP_CONCAT(DISTINCT ra.user_id ORDER BY ra.id SEPARATOR ',') AS assignee_ids,
+    GROUP_CONCAT(DISTINCT au.name ORDER BY ra.id SEPARATOR ',') AS assignee_names,
     ANY_VALUE(p.name) AS project_name
   FROM requirements r
   JOIN users d ON d.id = r.developer_id
   LEFT JOIN requirement_testers rt ON rt.requirement_id = r.id
   LEFT JOIN users t ON t.id = rt.tester_id
   LEFT JOIN users a ON a.id = r.assignee_id
+  LEFT JOIN requirement_assignees ra ON ra.requirement_id = r.id
+  LEFT JOIN users au ON au.id = ra.user_id
   JOIN projects p ON p.id = r.project_id
 `;
 
@@ -177,20 +183,20 @@ router.get("/", async (req, res, next) => {
     }
     if (params.assignedTo !== undefined) {
       if (params.assignedTo === null) {
-        conditions.push("r.assignee_id IS NULL");
+        conditions.push("NOT EXISTS (SELECT 1 FROM requirement_assignees ra_f WHERE ra_f.requirement_id = r.id)");
       } else {
-        conditions.push("r.assignee_id = ?");
+        conditions.push("EXISTS (SELECT 1 FROM requirement_assignees ra_f WHERE ra_f.requirement_id = r.id AND ra_f.user_id = ?)");
         values.push(params.assignedTo);
       }
     }
     if (params.mine) {
       const me = req.trackerUser!;
-      conditions.push("r.assignee_id = ?");
+      conditions.push("EXISTS (SELECT 1 FROM requirement_assignees ra_f WHERE ra_f.requirement_id = r.id AND ra_f.user_id = ?)");
       values.push(me.id);
     }
     if (!params.mine && req.trackerUser!.role !== "admin") {
       const me = req.trackerUser!;
-      conditions.push("r.assignee_id = ?");
+      conditions.push("EXISTS (SELECT 1 FROM requirement_assignees ra_f WHERE ra_f.requirement_id = r.id AND ra_f.user_id = ?)");
       values.push(me.id);
     }
     const where =
@@ -227,13 +233,15 @@ router.post("/", async (req, res, next) => {
       }
     }
 
-    if (body.assigneeId !== undefined && body.assigneeId !== null) {
+    const assigneeIds = body.assigneeIds && body.assigneeIds.length > 0 ? body.assigneeIds : [me.id];
+    if (assigneeIds.length > 0) {
+      const placeholders = assigneeIds.map(() => "?").join(", ");
       const [arows] = await trackerPool.query(
-        "SELECT id FROM users WHERE id = ?",
-        [body.assigneeId],
+        `SELECT id FROM users WHERE id IN (${placeholders})`,
+        assigneeIds,
       );
-      if ((arows as Array<{ id: number }>).length === 0) {
-        res.status(400).json({ error: "Assignee not found" });
+      if ((arows as Array<{ id: number }>).length !== assigneeIds.length) {
+        res.status(400).json({ error: "One or more assignees not found" });
         return;
       }
     }
@@ -245,11 +253,18 @@ router.post("/", async (req, res, next) => {
         body.description ?? null,
         body.priority ?? "medium",
         me.id,
-        body.assigneeId ?? me.id,
+        assigneeIds[0],
         body.projectId,
       ],
     );
     const insertId = (insertResult as { insertId: number }).insertId;
+
+    // Insert all assignees into the join table
+    const assigneeValues = assigneeIds.map((uid) => [insertId, uid, me.id]);
+    await trackerPool.query(
+      "INSERT IGNORE INTO requirement_assignees (requirement_id, user_id, assigned_by_id) VALUES ?",
+      [assigneeValues],
+    );
 
     if (body.testerIds && body.testerIds.length > 0) {
       const testerValues = body.testerIds.map((tid) => [insertId, tid]);
@@ -271,14 +286,14 @@ router.post("/", async (req, res, next) => {
     const row = (rows as RequirementListRow[])[0];
     res.status(201).json(serializeRequirementListRow(row));
 
-    // Notify assignee if different from the creator
-    const effectiveAssigneeId = body.assigneeId ?? me.id;
-    if (effectiveAssigneeId !== me.id) {
-      const users = await getUserEmails([effectiveAssigneeId]);
-      const assignee = users.get(effectiveAssigneeId);
-      if (assignee) {
+    // Notify assignees who are not the creator
+    const newAssigneeIds = assigneeIds.filter((uid) => uid !== me.id);
+    if (newAssigneeIds.length > 0) {
+      const userMap = await getUserEmails(newAssigneeIds);
+      const emails = newAssigneeIds.map((uid) => userMap.get(uid)?.email).filter((e): e is string => !!e);
+      if (emails.length > 0) {
         sendEmail(
-          [assignee.email],
+          emails,
           `Task assigned to you: ${body.title}`,
           taskAssignedTemplate({
             taskId: insertId,
@@ -393,7 +408,6 @@ router.patch("/:id", async (req, res, next) => {
           return;
         }
       }
-      // Capture current testers before we overwrite them
       const [oldTRows] = await trackerPool.query(
         "SELECT tester_id FROM requirement_testers WHERE requirement_id = ?",
         [id],
@@ -401,19 +415,29 @@ router.patch("/:id", async (req, res, next) => {
       oldTesterIds = (oldTRows as Array<{ tester_id: number }>).map((r) => r.tester_id);
       updateTesters = true;
     }
-    if (body.assigneeId !== undefined) {
-      if (body.assigneeId !== null) {
+    let updateAssignees = false;
+    let oldAssigneeIds: number[] = [];
+    if (body.assigneeIds !== undefined) {
+      if (body.assigneeIds.length > 0) {
+        const placeholders = body.assigneeIds.map(() => "?").join(", ");
         const [arows] = await trackerPool.query(
-          "SELECT id FROM users WHERE id = ?",
-          [body.assigneeId],
+          `SELECT id FROM users WHERE id IN (${placeholders})`,
+          body.assigneeIds,
         );
-        if ((arows as Array<{ id: number }>).length === 0) {
-          res.status(400).json({ error: "Assignee not found" });
+        if ((arows as Array<{ id: number }>).length !== body.assigneeIds.length) {
+          res.status(400).json({ error: "One or more assignees not found" });
           return;
         }
       }
+      const [oldARows] = await trackerPool.query(
+        "SELECT user_id FROM requirement_assignees WHERE requirement_id = ?",
+        [id],
+      );
+      oldAssigneeIds = (oldARows as Array<{ user_id: number }>).map((r) => r.user_id);
+      updateAssignees = true;
+      // Keep assignee_id in sync with first assignee
       fields.push("assignee_id = ?");
-      values.push(body.assigneeId);
+      values.push(body.assigneeIds[0] ?? null);
     }
     if (body.projectId !== undefined) {
       const [prows] = await trackerPool.query(
@@ -428,12 +452,14 @@ router.patch("/:id", async (req, res, next) => {
       values.push(body.projectId);
     }
 
-    if (fields.length > 0) {
-      values.push(id);
-      await trackerPool.query(
-        `UPDATE requirements SET ${fields.join(", ")} WHERE id = ?`,
-        values,
-      );
+    if (fields.length > 0 || updateTesters || updateAssignees) {
+      if (fields.length > 0) {
+        values.push(id);
+        await trackerPool.query(
+          `UPDATE requirements SET ${fields.join(", ")} WHERE id = ?`,
+          values,
+        );
+      }
       if (updateTesters) {
         await trackerPool.query(
           "DELETE FROM requirement_testers WHERE requirement_id = ?",
@@ -451,10 +477,21 @@ router.patch("/:id", async (req, res, next) => {
           [id, me.id, body.testerIds!.length === 0 ? "Testers unassigned" : `Testers updated (${body.testerIds!.length})`],
         );
       }
-      if (body.assigneeId !== undefined) {
+      if (updateAssignees) {
+        await trackerPool.query(
+          "DELETE FROM requirement_assignees WHERE requirement_id = ?",
+          [id],
+        );
+        if (body.assigneeIds!.length > 0) {
+          const assigneeValues = body.assigneeIds!.map((uid) => [id, uid, me.id]);
+          await trackerPool.query(
+            "INSERT IGNORE INTO requirement_assignees (requirement_id, user_id, assigned_by_id) VALUES ?",
+            [assigneeValues],
+          );
+        }
         await trackerPool.query(
           "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'assigned', ?, ?)",
-          [id, me.id, body.assigneeId === null ? "Assignee unassigned" : "Assignee changed"],
+          [id, me.id, body.assigneeIds!.length === 0 ? "Assignees cleared" : `Assignees updated (${body.assigneeIds!.length})`],
         );
       }
     }
@@ -492,27 +529,27 @@ router.patch("/:id", async (req, res, next) => {
       }
     }
 
-    // Notify new assignee if changed and not assigning to self
-    if (
-      body.assigneeId !== undefined &&
-      body.assigneeId !== null &&
-      body.assigneeId !== existing.assignee_id &&
-      body.assigneeId !== me.id
-    ) {
-      const users = await getUserEmails([body.assigneeId]);
-      const assignee = users.get(body.assigneeId);
-      if (assignee) {
-        sendEmail(
-          [assignee.email],
-          `Task assigned to you: ${updated.title}`,
-          taskAssignedTemplate({
-            taskId: id,
-            taskTitle: updated.title,
-            assignerName: me.name,
-            priority: updated.priority,
-            projectName: updated.project_name,
-          }),
-        );
+    // Notify newly added assignees (not in old list, not the actor)
+    if (updateAssignees && body.assigneeIds && body.assigneeIds.length > 0) {
+      const newIds = body.assigneeIds.filter(
+        (uid) => !oldAssigneeIds.includes(uid) && uid !== me.id,
+      );
+      if (newIds.length > 0) {
+        const userMap = await getUserEmails(newIds);
+        const emails = newIds.map((uid) => userMap.get(uid)?.email).filter((e): e is string => !!e);
+        if (emails.length > 0) {
+          sendEmail(
+            emails,
+            `Task assigned to you: ${updated.title}`,
+            taskAssignedTemplate({
+              taskId: id,
+              taskTitle: updated.title,
+              assignerName: me.name,
+              priority: updated.priority,
+              projectName: updated.project_name,
+            }),
+          );
+        }
       }
     }
   } catch (err) {
@@ -586,26 +623,29 @@ router.post("/:id/transition", async (req, res, next) => {
     const updated = (rows as RequirementListRow[])[0];
     res.json(serializeRequirementListRow(updated));
 
-    // Notify developer (creator) and tester (if set), but not the actor themselves
-    // Also notify assignee when status moves to needs_fix
+    // Fetch current assignees for notification purposes
+    const [curAssigneeRows] = await trackerPool.query(
+      "SELECT user_id FROM requirement_assignees WHERE requirement_id = ?",
+      [id],
+    );
+    const currentAssigneeIds = (curAssigneeRows as Array<{ user_id: number }>).map((r) => r.user_id);
+
     let notifyUserIds: (number | null)[];
     if (body.toStatus === "open" || body.toStatus === "confirmed") {
-      notifyUserIds = [existing.developer_id];
+      notifyUserIds = [existing.developer_id, ...currentAssigneeIds];
     } else if (body.toStatus === "in_testing") {
-      // If testers are assigned notify them, otherwise fall back to creator
       notifyUserIds = existingTesterIds.length > 0
         ? existingTesterIds
         : [existing.developer_id];
     } else if (body.toStatus === "pushed_to_production") {
-      // All admins + creator (dedup handles the case where creator is also an admin)
       const [adminRows] = await trackerPool.query(
         "SELECT id FROM users WHERE role = 'admin'",
       );
       notifyUserIds = (adminRows as Array<{ id: number }>).map((r) => r.id);
       notifyUserIds.push(existing.developer_id);
     } else {
-      // needs_fix
-      notifyUserIds = [existing.developer_id, ...existingTesterIds, existing.assignee_id];
+      // needs_fix — notify developer + assignees + testers
+      notifyUserIds = [existing.developer_id, ...currentAssigneeIds, ...existingTesterIds];
     }
 
     const notifyIds = [...new Set(
@@ -626,6 +666,99 @@ router.post("/:id/transition", async (req, res, next) => {
             toStatus: body.toStatus,
             projectName: updated.project_name,
             note: body.note,
+          }),
+        );
+      }
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/:id/assignees", async (req, res, next) => {
+  try {
+    const reqId = parseInt(String(req.params.id));
+    if (isNaN(reqId)) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+    const me = req.trackerUser!;
+    const { userIds } = req.body ?? {};
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      res.status(400).json({ error: "userIds must be a non-empty array" });
+      return;
+    }
+
+    // Only admins or current assignees can delegate
+    const [assigneeCheck] = await trackerPool.query(
+      "SELECT user_id FROM requirement_assignees WHERE requirement_id = ? AND user_id = ?",
+      [reqId, me.id],
+    );
+    if (me.role !== "admin" && (assigneeCheck as Array<{ user_id: number }>).length === 0) {
+      res.status(403).json({ error: "Only admins or current assignees can delegate this task" });
+      return;
+    }
+
+    const [rrows] = await trackerPool.query(
+      `${REQ_LIST_SQL} WHERE r.id = ? GROUP BY r.id`,
+      [reqId],
+    );
+    const row = (rrows as RequirementListRow[])[0];
+    if (!row) {
+      res.status(404).json({ error: "Requirement not found" });
+      return;
+    }
+
+    // Validate all userIds exist
+    const placeholders = (userIds as number[]).map(() => "?").join(", ");
+    const [urows] = await trackerPool.query(
+      `SELECT id FROM users WHERE id IN (${placeholders})`,
+      userIds,
+    );
+    if ((urows as Array<{ id: number }>).length !== (userIds as number[]).length) {
+      res.status(400).json({ error: "One or more users not found" });
+      return;
+    }
+
+    // Get current assignees to detect newly added ones
+    const [oldARows] = await trackerPool.query(
+      "SELECT user_id FROM requirement_assignees WHERE requirement_id = ?",
+      [reqId],
+    );
+    const oldIds = (oldARows as Array<{ user_id: number }>).map((r) => r.user_id);
+
+    const insertValues = (userIds as number[]).map((uid) => [reqId, uid, me.id]);
+    await trackerPool.query(
+      "INSERT IGNORE INTO requirement_assignees (requirement_id, user_id, assigned_by_id) VALUES ?",
+      [insertValues],
+    );
+
+    await trackerPool.query(
+      "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'assigned', ?, ?)",
+      [reqId, me.id, `Delegated to ${(userIds as number[]).length} user(s)`],
+    );
+
+    const [updated] = await trackerPool.query(
+      `${REQ_LIST_SQL} WHERE r.id = ? GROUP BY r.id`,
+      [reqId],
+    );
+    res.json(serializeRequirementListRow((updated as RequirementListRow[])[0]));
+
+    // Notify newly added users
+    const newIds = (userIds as number[]).filter((uid) => !oldIds.includes(uid) && uid !== me.id);
+    if (newIds.length > 0) {
+      const userMap = await getUserEmails(newIds);
+      const emails = newIds.map((uid) => userMap.get(uid)?.email).filter((e): e is string => !!e);
+      if (emails.length > 0) {
+        sendEmail(
+          emails,
+          `Task assigned to you: ${row.title}`,
+          taskAssignedTemplate({
+            taskId: reqId,
+            taskTitle: row.title,
+            assignerName: me.name,
+            priority: row.priority,
+            projectName: row.project_name,
           }),
         );
       }
