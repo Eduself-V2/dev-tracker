@@ -130,7 +130,7 @@ router.get("/report", async (req, res, next) => {
     const [createdRows] = await trackerPool.query(
       `SELECT r.developer_id AS user_id, COUNT(*) AS cnt
        FROM requirements r
-       WHERE r.created_at BETWEEN ? AND ?
+       WHERE r.updated_at BETWEEN ? AND ?
          ${uid ? "AND r.developer_id = ?" : ""}
        GROUP BY r.developer_id`,
       uid ? [start, end, uid] : [start, end],
@@ -139,14 +139,14 @@ router.get("/report", async (req, res, next) => {
     const [assignedRows] = await trackerPool.query(
       `SELECT user_id, COUNT(DISTINCT req_id) AS cnt FROM (
          SELECT r.developer_id AS user_id, r.id AS req_id FROM requirements r
-           WHERE r.created_at BETWEEN ? AND ? ${uid ? "AND r.developer_id = ?" : ""}
+           WHERE r.updated_at BETWEEN ? AND ? ${uid ? "AND r.developer_id = ?" : ""}
          UNION ALL
          SELECT rt2.tester_id AS user_id, rt2.requirement_id AS req_id
            FROM requirement_testers rt2 JOIN requirements r ON r.id = rt2.requirement_id
-           WHERE r.created_at BETWEEN ? AND ? ${uid ? "AND rt2.tester_id = ?" : ""}
+           WHERE r.updated_at BETWEEN ? AND ? ${uid ? "AND rt2.tester_id = ?" : ""}
          UNION ALL
          SELECT r.assignee_id, r.id FROM requirements r
-           WHERE r.assignee_id IS NOT NULL AND r.created_at BETWEEN ? AND ? ${uid ? "AND r.assignee_id = ?" : ""}
+           WHERE r.assignee_id IS NOT NULL AND r.updated_at BETWEEN ? AND ? ${uid ? "AND r.assignee_id = ?" : ""}
        ) t GROUP BY user_id`,
       uid
         ? [start, end, uid, start, end, uid, start, end, uid]
