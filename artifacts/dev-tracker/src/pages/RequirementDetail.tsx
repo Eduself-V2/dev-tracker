@@ -282,14 +282,28 @@ function TimelineView({ events, expanded, onToggle }: { events: any[]; expanded:
 
 const getAllowedTransitions = (currentStatus: string, role: string): Transition[] => {
   if (role === 'admin') {
-    const all: Transition[] = [
-      { status: 'open', label: 'Move to Open', icon: Activity, variant: 'secondary' },
-      { status: 'in_testing', label: 'Move to In Testing', icon: Play, variant: 'default' },
-      { status: 'needs_fix', label: 'Move to Needs Fix', icon: AlertCircle, variant: 'destructive' },
-      { status: 'confirmed', label: 'Move to Confirmed', icon: CheckCircle2, variant: 'default' },
-      { status: 'pushed_to_production', label: 'Push to Production', icon: ArrowRight, variant: 'default' },
-    ];
-    return all.filter(t => t.status !== currentStatus);
+    const stateMap: Record<string, Transition[]> = {
+      open: [
+        { status: 'in_testing', label: 'Move to Testing', icon: Play, variant: 'default' },
+        { status: 'confirmed', label: 'Mark Confirmed', icon: CheckCircle2, variant: 'default' },
+      ],
+      in_testing: [
+        { status: 'confirmed', label: 'Confirm Fixes', icon: CheckCircle2, variant: 'default' },
+        { status: 'needs_fix', label: 'Needs Fix', icon: AlertCircle, variant: 'destructive' },
+      ],
+      needs_fix: [
+        { status: 'in_testing', label: 'Move to Testing', icon: Play, variant: 'default' },
+        { status: 'confirmed', label: 'Mark Confirmed', icon: CheckCircle2, variant: 'default' },
+      ],
+      confirmed: [
+        { status: 'pushed_to_production', label: 'Push to Production', icon: ArrowRight, variant: 'default' },
+        { status: 'open', label: 'Reopen', icon: Activity, variant: 'secondary' },
+      ],
+      pushed_to_production: [
+        { status: 'open', label: 'Reopen', icon: Activity, variant: 'secondary' },
+      ],
+    };
+    return stateMap[currentStatus] ?? [];
   }
   if (role === 'developer') {
     if (currentStatus === 'open' || currentStatus === 'needs_fix') {
