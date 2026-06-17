@@ -12,14 +12,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Activity, LayoutDashboard, ListTodo, PlusCircle, Users, FolderKanban, BarChart2 } from "lucide-react";
+import { Activity, LayoutDashboard, ListTodo, PlusCircle, Users, FolderKanban, BarChart2, Moon, Sun } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/lib/theme";
 
 export function Navbar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
   
   const logout = useTrackerLogout({
     mutation: {
@@ -72,7 +74,10 @@ export function Navbar() {
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
           <div className="w-full flex-1 md:w-auto md:flex-none">
           </div>
-          <nav className="flex items-center">
+          <nav className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8" aria-label="Toggle theme">
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
