@@ -65,7 +65,7 @@ export interface RequirementListRow extends RequirementRow {
 export interface EventRow {
   id: number;
   requirement_id: number;
-  kind: "created" | "transitioned" | "comment" | "assigned";
+  kind: "created" | "transitioned" | "comment" | "assigned" | "notified";
   from_status: string | null;
   to_status: string | null;
   note: string | null;

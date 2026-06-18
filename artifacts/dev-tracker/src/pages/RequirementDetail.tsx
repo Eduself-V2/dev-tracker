@@ -55,6 +55,7 @@ import {
   Download,
   Loader2,
   Bell,
+  Mail,
   Mic,
   Volume2,
   UserPlus,
@@ -220,6 +221,7 @@ function TimelineView({ events, expanded, onToggle }: { events: any[]; expanded:
     transitioned: "changed status",
     assigned: "assigned",
     comment: "commented",
+    notified: "sent mail",
   };
 
   const kindIcon: Record<string, any> = {
@@ -227,6 +229,7 @@ function TimelineView({ events, expanded, onToggle }: { events: any[]; expanded:
     transitioned: ArrowRight,
     assigned: User,
     comment: MessageSquare,
+    notified: Mail,
   };
 
   return (
@@ -556,6 +559,7 @@ export default function RequirementDetail() {
       toast({ title: `Alert sent to ${sent} recipient${sent !== 1 ? "s" : ""}` });
       setAlertUserIds([]);
       setAlertMessage("");
+      queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) });
     } catch {
       toast({ title: "Failed to send alert", variant: "destructive" });
     } finally {

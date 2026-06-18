@@ -616,14 +616,7 @@ router.post("/:id/transition", async (req, res, next) => {
       [id, existing.status, body.toStatus, body.note ?? null, me.id],
     );
 
-    const [rows] = await trackerPool.query(
-      `${REQ_LIST_SQL} WHERE r.id = ? GROUP BY r.id`,
-      [id],
-    );
-    const updated = (rows as RequirementListRow[])[0];
-    res.json(serializeRequirementListRow(updated));
-
-    // Fetch current assignees for notification purposes
+    // Calculate notifications BEFORE sending response so the event is visible on re-fetch
     const [curAssigneeRows] = await trackerPool.query(
       "SELECT user_id FROM requirement_assignees WHERE requirement_id = ?",
       [id],
@@ -634,9 +627,14 @@ router.post("/:id/transition", async (req, res, next) => {
     if (body.toStatus === "open" || body.toStatus === "confirmed") {
       notifyUserIds = [existing.developer_id, ...currentAssigneeIds];
     } else if (body.toStatus === "in_testing") {
-      notifyUserIds = existingTesterIds.length > 0
-        ? existingTesterIds
-        : [existing.developer_id];
+      if (existingTesterIds.length > 0) {
+        notifyUserIds = existingTesterIds;
+      } else {
+        const [adminRows] = await trackerPool.query(
+          "SELECT id FROM users WHERE role = 'admin'",
+        );
+        notifyUserIds = (adminRows as Array<{ id: number }>).map((r) => r.id);
+      }
     } else if (body.toStatus === "pushed_to_production") {
       const [adminRows] = await trackerPool.query(
         "SELECT id FROM users WHERE role = 'admin'",
@@ -651,24 +649,44 @@ router.post("/:id/transition", async (req, res, next) => {
     const notifyIds = [...new Set(
       notifyUserIds.filter((uid): uid is number => uid !== null && uid !== me.id),
     )];
+
+    let emailAddresses: string[] = [];
+    let recipientNames: string[] = [];
     if (notifyIds.length > 0) {
-      const users = await getUserEmails(notifyIds);
-      const emails = notifyIds.map((uid) => users.get(uid)?.email).filter((e): e is string => !!e);
-      if (emails.length > 0) {
-        sendEmail(
-          emails,
-          `Task status updated: ${updated.title}`,
-          statusTransitionTemplate({
-            taskId: id,
-            taskTitle: updated.title,
-            actorName: me.name,
-            fromStatus: existing.status,
-            toStatus: body.toStatus,
-            projectName: updated.project_name,
-            note: body.note,
-          }),
-        );
-      }
+      const usersMap = await getUserEmails(notifyIds);
+      emailAddresses = notifyIds.map((uid) => usersMap.get(uid)?.email).filter((e): e is string => !!e);
+      recipientNames = notifyIds.map((uid) => usersMap.get(uid)?.name).filter((n): n is string => !!n);
+    }
+
+    if (emailAddresses.length > 0) {
+      await trackerPool.query(
+        "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'notified', ?, ?)",
+        [id, me.id, `Sent mail to: ${recipientNames.join(", ")}`],
+      );
+    }
+
+    const [rows] = await trackerPool.query(
+      `${REQ_LIST_SQL} WHERE r.id = ? GROUP BY r.id`,
+      [id],
+    );
+    const updated = (rows as RequirementListRow[])[0];
+    res.json(serializeRequirementListRow(updated));
+
+    // Fire-and-forget email after response
+    if (emailAddresses.length > 0) {
+      sendEmail(
+        emailAddresses,
+        `Task status updated: ${updated.title}`,
+        statusTransitionTemplate({
+          taskId: id,
+          taskTitle: updated.title,
+          actorName: me.name,
+          fromStatus: existing.status,
+          toStatus: body.toStatus,
+          projectName: updated.project_name,
+          note: body.note,
+        }),
+      );
     }
   } catch (err) {
     next(err);
@@ -817,6 +835,11 @@ router.post("/:id/notify", async (req, res, next) => {
           projectName: row.project_name,
           message: typeof message === "string" && message.trim() ? message.trim() : undefined,
         }),
+      );
+      const recipientNames = targetIds.map((uid) => userMap.get(uid)?.name).filter((n): n is string => !!n);
+      await trackerPool.query(
+        "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'notified', ?, ?)",
+        [reqId, me.id, `Alert sent to: ${recipientNames.join(", ")}`],
       );
     }
 

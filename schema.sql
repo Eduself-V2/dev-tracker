@@ -55,7 +55,7 @@ CREATE TABLE requirements (
 CREATE TABLE requirement_events (
   id int NOT NULL AUTO_INCREMENT,
   requirement_id int NOT NULL,
-  kind enum('created','transitioned','comment','assigned') NOT NULL,
+  kind enum('created','transitioned','comment','assigned','notified') NOT NULL,
   from_status varchar(40) DEFAULT NULL,
   to_status varchar(40) DEFAULT NULL,
   note text,
