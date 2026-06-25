@@ -20,6 +20,7 @@ import {
   type AttachmentRow,
 } from "../../lib/trackerDb";
 import { sendEmail } from "../../lib/ses";
+import { deleteFromS3 } from "../../lib/s3";
 import { taskAssignedTemplate, testerAssignedTemplate, statusTransitionTemplate, adminAlertTemplate } from "../../lib/emailTemplates";
 
 async function getUserEmails(ids: number[]): Promise<Map<number, { name: string; email: string }>> {
@@ -1001,10 +1002,30 @@ router.delete("/:id/comments/:commentId", async (req, res, next) => {
       return;
     }
 
+    // Collect IDs of this comment plus any replies (cascade will delete them from DB)
+    const [replyRows] = await trackerPool.query(
+      "SELECT id FROM requirement_comments WHERE parent_id = ?",
+      [commentId],
+    );
+    const allCommentIds = [commentId, ...(replyRows as Array<{ id: number }>).map((r) => r.id)];
+
+    // Fetch all S3 keys for attachments on these comments
+    const placeholders = allCommentIds.map(() => "?").join(", ");
+    const [attRows] = await trackerPool.query(
+      `SELECT s3_key FROM requirement_attachments WHERE comment_id IN (${placeholders})`,
+      allCommentIds,
+    );
+    const s3Keys = (attRows as Array<{ s3_key: string }>).map((a) => a.s3_key);
+
+    // Delete comment (DB cascade removes attachment rows and reply rows)
     await trackerPool.query(
       "DELETE FROM requirement_comments WHERE id = ?",
       [commentId],
     );
+
+    // Delete S3 files after DB rows are gone
+    await Promise.allSettled(s3Keys.map((key) => deleteFromS3(key)));
+
     res.status(204).end();
   } catch (err) {
     next(err);
