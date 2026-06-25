@@ -73,12 +73,15 @@ CREATE TABLE requirement_comments (
   requirement_id int NOT NULL,
   body text NOT NULL,
   author_id int NOT NULL,
+  parent_id int NULL DEFAULT NULL,
   created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_cmt_req (requirement_id),
   KEY fk_cmt_author (author_id),
+  KEY idx_cmt_parent (parent_id),
   CONSTRAINT fk_cmt_author FOREIGN KEY (author_id) REFERENCES users (id) ON DELETE RESTRICT,
-  CONSTRAINT fk_cmt_req FOREIGN KEY (requirement_id) REFERENCES requirements (id) ON DELETE CASCADE
+  CONSTRAINT fk_cmt_req FOREIGN KEY (requirement_id) REFERENCES requirements (id) ON DELETE CASCADE,
+  CONSTRAINT fk_cmt_parent FOREIGN KEY (parent_id) REFERENCES requirement_comments (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE requirement_assignees (

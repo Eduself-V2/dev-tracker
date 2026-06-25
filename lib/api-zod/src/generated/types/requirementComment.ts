@@ -13,5 +13,6 @@ export interface RequirementComment {
   authorId: number;
   authorName: string;
   authorRole: string;
+  parentId?: number | null;
   createdAt: Date;
 }

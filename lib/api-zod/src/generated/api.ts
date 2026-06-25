@@ -183,15 +183,16 @@ export const TrackerListRequirementsResponseItem = zod.object({
   priority: zod.enum(["low", "medium", "high"]),
   developerId: zod.number(),
   developerName: zod.string(),
-  testerIds: zod.array(zod.number()).optional(),
-  testerNames: zod.array(zod.string()).optional(),
-  assigneeIds: zod.array(zod.number()).optional(),
-  assigneeNames: zod.array(zod.string()).optional(),
+  testerId: zod.number().nullish(),
+  testerName: zod.string().nullish(),
+  assigneeId: zod.number().nullish(),
+  assigneeName: zod.string().nullish(),
   projectId: zod.number(),
   projectName: zod.string(),
   testCycles: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  lastActivityAt: zod.coerce.date().optional(),
 });
 export const TrackerListRequirementsResponse = zod.array(
   TrackerListRequirementsResponseItem,
@@ -210,8 +211,8 @@ export const TrackerCreateRequirementBody = zod.object({
   priority: zod
     .enum(["low", "medium", "high"])
     .default(trackerCreateRequirementBodyPriorityDefault),
-  testerIds: zod.array(zod.number()).optional(),
-  assigneeIds: zod.array(zod.number()).optional(),
+  testerId: zod.number().nullish(),
+  assigneeId: zod.number().nullish(),
   projectId: zod.number(),
 });
 
@@ -237,15 +238,16 @@ export const TrackerGetRequirementResponse = zod.object({
     priority: zod.enum(["low", "medium", "high"]),
     developerId: zod.number(),
     developerName: zod.string(),
-    testerIds: zod.array(zod.number()).optional(),
+    testerId: zod.number().nullish(),
     testerName: zod.string().nullish(),
-    assigneeIds: zod.array(zod.number()).optional(),
-    assigneeNames: zod.array(zod.string()).optional(),
+    assigneeId: zod.number().nullish(),
+    assigneeName: zod.string().nullish(),
     projectId: zod.number(),
     projectName: zod.string(),
     testCycles: zod.number(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
+    lastActivityAt: zod.coerce.date().optional(),
   }),
   events: zod.array(
     zod.object({
@@ -268,6 +270,7 @@ export const TrackerGetRequirementResponse = zod.object({
       authorId: zod.number(),
       authorName: zod.string(),
       authorRole: zod.string(),
+      parentId: zod.number().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -290,8 +293,8 @@ export const TrackerUpdateRequirementBody = zod.object({
     .optional(),
   description: zod.string().nullish(),
   priority: zod.enum(["low", "medium", "high"]).optional(),
-  testerIds: zod.array(zod.number()).optional(),
-  assigneeIds: zod.array(zod.number()).optional(),
+  testerId: zod.number().nullish(),
+  assigneeId: zod.number().nullish(),
   projectId: zod.number().optional(),
 });
 
@@ -309,15 +312,16 @@ export const TrackerUpdateRequirementResponse = zod.object({
   priority: zod.enum(["low", "medium", "high"]),
   developerId: zod.number(),
   developerName: zod.string(),
-  testerIds: zod.array(zod.number()).optional(),
-  testerNames: zod.array(zod.string()).optional(),
-  assigneeIds: zod.array(zod.number()).optional(),
-  assigneeNames: zod.array(zod.string()).optional(),
+  testerId: zod.number().nullish(),
+  testerName: zod.string().nullish(),
+  assigneeId: zod.number().nullish(),
+  assigneeName: zod.string().nullish(),
   projectId: zod.number(),
   projectName: zod.string(),
   testCycles: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  lastActivityAt: zod.coerce.date().optional(),
 });
 
 /**
@@ -353,15 +357,16 @@ export const TrackerTransitionRequirementResponse = zod.object({
     priority: zod.enum(["low", "medium", "high"]),
     developerId: zod.number(),
     developerName: zod.string(),
-    testerIds: zod.array(zod.number()).optional(),
+    testerId: zod.number().nullish(),
     testerName: zod.string().nullish(),
-    assigneeIds: zod.array(zod.number()).optional(),
-    assigneeNames: zod.array(zod.string()).optional(),
+    assigneeId: zod.number().nullish(),
+    assigneeName: zod.string().nullish(),
     projectId: zod.number(),
     projectName: zod.string(),
     testCycles: zod.number(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
+    lastActivityAt: zod.coerce.date().optional(),
   }),
   events: zod.array(
     zod.object({
@@ -384,6 +389,7 @@ export const TrackerTransitionRequirementResponse = zod.object({
       authorId: zod.number(),
       authorName: zod.string(),
       authorRole: zod.string(),
+      parentId: zod.number().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -400,6 +406,7 @@ export const trackerAddCommentBodyBodyMax = 2000;
 
 export const TrackerAddCommentBody = zod.object({
   body: zod.string().min(1).max(trackerAddCommentBodyBodyMax),
+  parentId: zod.number().nullish(),
 });
 
 /**
@@ -432,16 +439,16 @@ export const TrackerStatsSummaryResponse = zod.object({
       priority: zod.enum(["low", "medium", "high"]),
       developerId: zod.number(),
       developerName: zod.string(),
-      testerIds: zod.array(zod.number()).optional(),
+      testerId: zod.number().nullish(),
       testerName: zod.string().nullish(),
-      assigneeIds: zod.array(zod.number()).optional(),
-      assigneeNames: zod.array(zod.string()).optional(),
+      assigneeId: zod.number().nullish(),
+      assigneeName: zod.string().nullish(),
       projectId: zod.number(),
       projectName: zod.string(),
       testCycles: zod.number(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
-      lastActivityAt: zod.coerce.date(),
+      lastActivityAt: zod.coerce.date().optional(),
     }),
   ),
 });

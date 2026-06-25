@@ -12,4 +12,5 @@ export interface CreateComment {
    * @maxLength 2000
    */
   body: string;
+  parentId?: number | null;
 }

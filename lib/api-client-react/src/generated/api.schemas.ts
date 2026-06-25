@@ -136,6 +136,7 @@ export interface Requirement {
   testCycles: number;
   createdAt: string;
   updatedAt: string;
+  lastActivityAt?: string;
 }
 
 export type RequirementEventKind =
@@ -167,6 +168,7 @@ export interface RequirementComment {
   authorId: number;
   authorName: string;
   authorRole: string;
+  parentId?: number | null;
   createdAt: string;
 }
 
@@ -267,6 +269,7 @@ export interface CreateComment {
    * @maxLength 2000
    */
   body: string;
+  parentId?: number | null;
 }
 
 export interface TrackerStatsSummary {

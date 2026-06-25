@@ -112,6 +112,7 @@ function serializeComment(c: CommentRow) {
     authorId: c.author_id,
     authorName: c.author_name,
     authorRole: c.author_role,
+    parentId: c.parent_id ?? null,
     createdAt: c.created_at.toISOString(),
   };
 }
@@ -330,7 +331,8 @@ router.get("/:id", async (req, res, next) => {
       [id],
     );
     const [crows] = await trackerPool.query(
-      `SELECT c.*, u.name AS author_name, u.role AS author_role
+      `SELECT c.id, c.requirement_id, c.body, c.author_id, c.parent_id, c.created_at,
+              u.name AS author_name, u.role AS author_role
        FROM requirement_comments c
        JOIN users u ON u.id = c.author_id
        WHERE c.requirement_id = ?
@@ -847,6 +849,7 @@ router.post("/:id/comments", async (req, res, next) => {
     const { id } = TrackerAddCommentParams.parse(req.params);
     const body = TrackerAddCommentBody.parse(req.body);
     const me = req.trackerUser!;
+    const parentId: number | null = Number.isInteger(req.body?.parentId) ? req.body.parentId : null;
 
     const [existRows] = await trackerPool.query(
       "SELECT id FROM requirements WHERE id = ?",
@@ -857,17 +860,31 @@ router.post("/:id/comments", async (req, res, next) => {
       return;
     }
 
+    if (parentId !== null) {
+      const [prows] = await trackerPool.query(
+        "SELECT id FROM requirement_comments WHERE id = ? AND requirement_id = ? AND parent_id IS NULL",
+        [parentId, id],
+      );
+      if ((prows as Array<{ id: number }>).length === 0) {
+        res.status(400).json({ error: "Parent comment not found or is itself a reply" });
+        return;
+      }
+    }
+
     const [insertResult] = await trackerPool.query(
-      "INSERT INTO requirement_comments (requirement_id, body, author_id) VALUES (?, ?, ?)",
-      [id, body.body, me.id],
+      "INSERT INTO requirement_comments (requirement_id, body, author_id, parent_id) VALUES (?, ?, ?, ?)",
+      [id, body.body, me.id, parentId],
     );
-    await trackerPool.query(
-      "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'comment', ?, ?)",
-      [id, me.id, body.body.slice(0, 280)],
-    );
+    if (parentId === null) {
+      await trackerPool.query(
+        "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'comment', ?, ?)",
+        [id, me.id, body.body.slice(0, 280)],
+      );
+    }
     const insertId = (insertResult as { insertId: number }).insertId;
     const [rows] = await trackerPool.query(
-      `SELECT c.*, u.name AS author_name, u.role AS author_role
+      `SELECT c.id, c.requirement_id, c.body, c.author_id, c.parent_id, c.created_at,
+              u.name AS author_name, u.role AS author_role
        FROM requirement_comments c JOIN users u ON u.id = c.author_id
        WHERE c.id = ?`,
       [insertId],
@@ -916,7 +933,8 @@ router.patch("/:id/comments/:commentId", async (req, res, next) => {
     );
 
     const [rows] = await trackerPool.query(
-      `SELECT c.*, u.name AS author_name, u.role AS author_role
+      `SELECT c.id, c.requirement_id, c.body, c.author_id, c.parent_id, c.created_at,
+              u.name AS author_name, u.role AS author_role
        FROM requirement_comments c JOIN users u ON u.id = c.author_id
        WHERE c.id = ?`,
       [commentId],

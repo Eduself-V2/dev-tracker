@@ -603,6 +603,9 @@ components:
           type: string
         authorRole:
           type: string
+        parentId:
+          type: integer
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -717,6 +720,9 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+        parentId:
+          type: integer
+          nullable: true
       required: [body]
     TrackerStatsSummary:
       type: object

@@ -46,6 +46,7 @@ import {
   Calendar,
   Pencil,
   Trash2,
+  CornerDownRight,
   X,
   Check,
   Paperclip,
@@ -357,6 +358,9 @@ export default function RequirementDetail() {
   const [transitionNote, setTransitionNote] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editBody, setEditBody] = useState("");
+  const [replyingToId, setReplyingToId] = useState<number | null>(null);
+  const [replyBody, setReplyBody] = useState("");
+  const [postingReply, setPostingReply] = useState(false);
   const [timelineExpanded, setTimelineExpanded] = useState(false);
   const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<Set<number>>(new Set());
   const [deleteCommentId, setDeleteCommentId] = useState<number | null>(null);
@@ -464,6 +468,28 @@ export default function RequirementDetail() {
     const body = commentBody.trim() || (hasAudio ? "[Voice note]" : "");
     if (!body) return;
     commentMutation.mutate({ id: reqId, data: { body } });
+  };
+
+  const handlePostReply = async (parentId: number) => {
+    const body = replyBody.trim();
+    if (!body) return;
+    setPostingReply(true);
+    try {
+      const res = await fetch(`/api/tracker/requirements/${reqId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ body, parentId }),
+      });
+      if (!res.ok) throw new Error("Failed to post reply");
+      setReplyBody("");
+      setReplyingToId(null);
+      queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) });
+    } catch {
+      toast({ title: "Failed to post reply", variant: "destructive" });
+    } finally {
+      setPostingReply(false);
+    }
   };
 
   const canEditComment = (comment: any) => {
@@ -749,70 +775,182 @@ export default function RequirementDetail() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {comments.map((comment) => {
+                  {comments.filter((c) => !c.parentId).map((comment) => {
                     const cmtAttachments = allAttachments.filter((a) => a.commentId === comment.id);
+                    const replies = comments.filter((c) => c.parentId === comment.id);
                     return (
-                      <div key={comment.id} className="flex gap-4">
-                        <Avatar className="w-10 h-10 border shadow-sm shrink-0">
-                          <AvatarFallback className="bg-primary/5 text-primary font-medium">{comment.authorName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-sm">{comment.authorName}</span>
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{comment.authorRole}</Badge>
+                      <div key={comment.id}>
+                        <div className="flex gap-4">
+                          <Avatar className="w-10 h-10 border shadow-sm shrink-0">
+                            <AvatarFallback className="bg-primary/5 text-primary font-medium">{comment.authorName.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-sm">{comment.authorName}</span>
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{comment.authorRole}</Badge>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                                </span>
+                                {canEditComment(comment) && (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => startEdit(comment)}
+                                      className="p-1 rounded hover:bg-muted transition-colors"
+                                      title="Edit"
+                                    >
+                                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                                    </button>
+                                    <button
+                                      onClick={() => setDeleteCommentId(comment.id)}
+                                      className="p-1 rounded hover:bg-destructive/10 transition-colors"
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 text-destructive/70" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">
-                                {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
-                              </span>
-                              {canEditComment(comment) && (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => startEdit(comment)}
-                                    className="p-1 rounded hover:bg-muted transition-colors"
-                                    title="Edit"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteCommentId(comment.id)}
-                                    className="p-1 rounded hover:bg-destructive/10 transition-colors"
-                                    title="Delete"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5 text-destructive/70" />
-                                  </button>
+                            {editingCommentId === comment.id ? (
+                              <div className="space-y-2">
+                                <Textarea
+                                  value={editBody}
+                                  onChange={(e) => setEditBody(e.target.value)}
+                                  className="min-h-[80px] text-sm bg-background"
+                                />
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                                    <X className="w-4 h-4 mr-1" /> Cancel
+                                  </Button>
+                                  <Button size="sm" onClick={() => saveEdit(comment.id)} disabled={!editBody.trim()}>
+                                    <Check className="w-4 h-4 mr-1" /> Save
+                                  </Button>
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <div className="bg-muted/40 p-3 rounded-lg rounded-tl-none border border-border/50 text-sm">
+                                  <p className="whitespace-pre-wrap">{renderWithLinks(comment.body)}</p>
+                                </div>
+                                {cmtAttachments.length > 0 && (
+                                  <AttachmentList attachments={cmtAttachments} reqId={reqId} onDeleted={handleAttachmentDeleted} />
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setReplyingToId(replyingToId === comment.id ? null : comment.id);
+                                    setReplyBody("");
+                                  }}
+                                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                  <CornerDownRight className="w-3 h-3" />
+                                  Reply
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          {editingCommentId === comment.id ? (
-                            <div className="space-y-2">
+                        </div>
+
+                        {/* Replies */}
+                        {replies.length > 0 && (
+                          <div className="ml-14 mt-3 space-y-3 border-l-2 border-border/40 pl-4">
+                            {replies.map((reply) => (
+                              <div key={reply.id} className="flex gap-3">
+                                <Avatar className="w-8 h-8 border shadow-sm shrink-0">
+                                  <AvatarFallback className="bg-primary/5 text-primary text-xs font-medium">{reply.authorName.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-semibold text-xs">{reply.authorName}</span>
+                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{reply.authorRole}</Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-muted-foreground">
+                                        {formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true })}
+                                      </span>
+                                      {canEditComment(reply) && (
+                                        <div className="flex items-center gap-1">
+                                          <button
+                                            onClick={() => startEdit(reply)}
+                                            className="p-1 rounded hover:bg-muted transition-colors"
+                                            title="Edit"
+                                          >
+                                            <Pencil className="w-3 h-3 text-muted-foreground" />
+                                          </button>
+                                          <button
+                                            onClick={() => setDeleteCommentId(reply.id)}
+                                            className="p-1 rounded hover:bg-destructive/10 transition-colors"
+                                            title="Delete"
+                                          >
+                                            <Trash2 className="w-3 h-3 text-destructive/70" />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {editingCommentId === reply.id ? (
+                                    <div className="space-y-2">
+                                      <Textarea
+                                        value={editBody}
+                                        onChange={(e) => setEditBody(e.target.value)}
+                                        className="min-h-[60px] text-sm bg-background"
+                                      />
+                                      <div className="flex justify-end gap-2">
+                                        <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                                          <X className="w-3.5 h-3.5 mr-1" /> Cancel
+                                        </Button>
+                                        <Button size="sm" onClick={() => saveEdit(reply.id)} disabled={!editBody.trim()}>
+                                          <Check className="w-3.5 h-3.5 mr-1" /> Save
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="bg-muted/30 p-2.5 rounded-lg rounded-tl-none border border-border/40 text-sm">
+                                      <p className="whitespace-pre-wrap">{renderWithLinks(reply.body)}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Reply composer */}
+                        {replyingToId === comment.id && (
+                          <div className="ml-14 mt-3 flex gap-3">
+                            <Avatar className="w-8 h-8 border shadow-sm shrink-0 hidden sm:block">
+                              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">{user?.name?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 space-y-2">
                               <Textarea
-                                value={editBody}
-                                onChange={(e) => setEditBody(e.target.value)}
-                                className="min-h-[80px] text-sm bg-background"
+                                placeholder={`Reply to ${comment.authorName}...`}
+                                value={replyBody}
+                                onChange={(e) => setReplyBody(e.target.value)}
+                                className="min-h-[70px] text-sm bg-background resize-none"
+                                autoFocus
                               />
                               <div className="flex justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                                  <X className="w-4 h-4 mr-1" /> Cancel
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => { setReplyingToId(null); setReplyBody(""); }}
+                                >
+                                  <X className="w-3.5 h-3.5 mr-1" /> Cancel
                                 </Button>
-                                <Button size="sm" onClick={() => saveEdit(comment.id)} disabled={!editBody.trim()}>
-                                  <Check className="w-4 h-4 mr-1" /> Save
+                                <Button
+                                  size="sm"
+                                  onClick={() => handlePostReply(comment.id)}
+                                  disabled={!replyBody.trim() || postingReply}
+                                >
+                                  {postingReply ? "Posting..." : "Post Reply"}
                                 </Button>
                               </div>
                             </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <div className="bg-muted/40 p-3 rounded-lg rounded-tl-none border border-border/50 text-sm">
-                                <p className="whitespace-pre-wrap">{renderWithLinks(comment.body)}</p>
-                              </div>
-                              {cmtAttachments.length > 0 && (
-                                <AttachmentList attachments={cmtAttachments} reqId={reqId} onDeleted={handleAttachmentDeleted} />
-                              )}
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

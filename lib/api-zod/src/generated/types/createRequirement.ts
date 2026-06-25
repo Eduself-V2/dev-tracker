@@ -15,7 +15,7 @@ export interface CreateRequirement {
   title: string;
   description?: string | null;
   priority?: CreateRequirementPriority;
-  testerIds?: number[];
+  testerId?: number | null;
   assigneeId?: number | null;
   projectId: number;
 }
