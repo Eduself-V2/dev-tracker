@@ -1008,7 +1008,9 @@ export default function RequirementDetail() {
                         {/* Replies */}
                         {(replies.length > 0 || replyingToId === comment.id) && (
                           <div className="mt-3 ml-6 border-l-2 border-primary/20 pl-4 space-y-3">
-                            {replies.map((reply) => (
+                            {replies.map((reply) => {
+                              const replyAttachments = allAttachments.filter((a) => a.commentId === reply.id);
+                              return (
                               <div key={reply.id} className="flex gap-3">
                                 <Avatar className="w-7 h-7 border shadow-sm shrink-0 mt-0.5">
                                   <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">{reply.authorName.charAt(0)}</AvatarFallback>
@@ -1054,12 +1056,20 @@ export default function RequirementDetail() {
                                         </div>
                                       </div>
                                     ) : (
-                                      <p className="px-3 py-2 text-sm whitespace-pre-wrap">{renderWithLinks(reply.body)}</p>
+                                      <div>
+                                        <p className="px-3 py-2 text-sm whitespace-pre-wrap">{renderWithLinks(reply.body)}</p>
+                                        {replyAttachments.length > 0 && (
+                                          <div className="px-3 pb-2">
+                                            <AttachmentList attachments={replyAttachments} reqId={reqId} onDeleted={handleAttachmentDeleted} />
+                                          </div>
+                                        )}
+                                      </div>
                                     )}
                                   </div>
                                 </div>
                               </div>
-                            ))}
+                              );
+                            })}
 
                             {/* Reply composer */}
                             {replyingToId === comment.id && (
