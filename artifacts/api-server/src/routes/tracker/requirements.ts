@@ -627,14 +627,7 @@ router.post("/:id/transition", async (req, res, next) => {
     if (body.toStatus === "open" || body.toStatus === "confirmed") {
       notifyUserIds = [existing.developer_id, ...currentAssigneeIds];
     } else if (body.toStatus === "in_testing") {
-      if (existingTesterIds.length > 0) {
-        notifyUserIds = existingTesterIds;
-      } else {
-        const [adminRows] = await trackerPool.query(
-          "SELECT id FROM users WHERE role = 'admin'",
-        );
-        notifyUserIds = (adminRows as Array<{ id: number }>).map((r) => r.id);
-      }
+      notifyUserIds = existingTesterIds;
     } else if (body.toStatus === "pushed_to_production") {
       const [adminRows] = await trackerPool.query(
         "SELECT id FROM users WHERE role = 'admin'",
