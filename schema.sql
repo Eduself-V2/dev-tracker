@@ -106,6 +106,7 @@ CREATE TABLE project_references (
   label varchar(200) NOT NULL,
   value text NOT NULL,
   is_sensitive tinyint(1) NOT NULL DEFAULT 0,
+  visibility_mode enum('admin_only','all','custom') NOT NULL DEFAULT 'admin_only',
   created_by int NOT NULL,
   created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -114,6 +115,18 @@ CREATE TABLE project_references (
   KEY fk_pref_user (created_by),
   CONSTRAINT fk_pref_project FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
   CONSTRAINT fk_pref_user FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE project_reference_visibility (
+  id int NOT NULL AUTO_INCREMENT,
+  reference_id int NOT NULL,
+  user_id int DEFAULT NULL,
+  role enum('developer','tester') DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY fk_prv_ref (reference_id),
+  KEY fk_prv_user (user_id),
+  CONSTRAINT fk_prv_ref FOREIGN KEY (reference_id) REFERENCES project_references (id) ON DELETE CASCADE,
+  CONSTRAINT fk_prv_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE requirement_attachments (

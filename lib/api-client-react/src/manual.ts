@@ -4,12 +4,17 @@ import { customFetch } from "./custom-fetch";
 
 // ── Project References ───────────────────────────────────────────────────────
 
+export type ReferenceVisibilityMode = "admin_only" | "all" | "custom";
+
 export interface ProjectReference {
   id: number;
   projectId: number;
   label: string;
   value: string;
   isSensitive: boolean;
+  visibilityMode: ReferenceVisibilityMode;
+  visibilityUserIds: number[];
+  visibilityRoles: string[];
   createdBy: number;
   creatorName: string;
   createdAt: string;
@@ -20,12 +25,18 @@ export interface CreateProjectReferenceBody {
   label: string;
   value: string;
   isSensitive?: boolean;
+  visibilityMode?: ReferenceVisibilityMode;
+  visibilityUserIds?: number[];
+  visibilityRoles?: string[];
 }
 
 export interface UpdateProjectReferenceBody {
   label?: string;
   value?: string;
   isSensitive?: boolean;
+  visibilityMode?: ReferenceVisibilityMode;
+  visibilityUserIds?: number[];
+  visibilityRoles?: string[];
 }
 
 export const getTrackerListReferencesQueryKey = (projectId: number) =>

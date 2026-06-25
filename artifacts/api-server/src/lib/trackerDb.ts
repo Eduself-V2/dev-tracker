@@ -85,16 +85,21 @@ export interface CommentRow {
   created_at: Date;
 }
 
+export type ReferenceVisibilityMode = "admin_only" | "all" | "custom";
+
 export interface ProjectReferenceRow {
   id: number;
   project_id: number;
   label: string;
   value: string;
   is_sensitive: number;
+  visibility_mode: ReferenceVisibilityMode;
   created_by: number;
   creator_name: string;
   created_at: Date;
   updated_at: Date;
+  vis_user_ids: string | null;
+  vis_roles: string | null;
 }
 
 export interface AttachmentRow {

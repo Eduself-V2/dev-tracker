@@ -6,8 +6,10 @@ import {
   useTrackerCreateReference,
   useTrackerUpdateReference,
   useTrackerDeleteReference,
+  useTrackerListUsers,
   getTrackerListReferencesQueryKey,
   type ProjectReference,
+  type ReferenceVisibilityMode,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +24,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -39,18 +43,47 @@ import {
   EyeOff,
   Loader2,
   FolderKanban,
-  ShieldAlert,
   Copy,
   Check,
+  Lock,
+  Globe,
+  Users,
 } from "lucide-react";
 
+// ── Visibility badge ─────────────────────────────────────────────────────────
+
+function VisibilityBadge({ mode }: { mode: ReferenceVisibilityMode }) {
+  if (mode === "admin_only")
+    return (
+      <Badge variant="secondary" className="gap-1 text-xs font-normal">
+        <Lock className="h-3 w-3" />
+        Admin only
+      </Badge>
+    );
+  if (mode === "all")
+    return (
+      <Badge variant="secondary" className="gap-1 text-xs font-normal text-green-600 dark:text-green-400 border-green-200 dark:border-green-800">
+        <Globe className="h-3 w-3" />
+        Everyone
+      </Badge>
+    );
+  return (
+    <Badge variant="secondary" className="gap-1 text-xs font-normal text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+      <Users className="h-3 w-3" />
+      Custom
+    </Badge>
+  );
+}
+
+// ── Single reference row ─────────────────────────────────────────────────────
+
 function ReferenceRow({
-  ref: item,
+  item,
   isAdmin,
   onEdit,
   onDelete,
 }: {
-  ref: ProjectReference;
+  item: ProjectReference;
   isAdmin: boolean;
   onEdit: (ref: ProjectReference) => void;
   onDelete: (ref: ProjectReference) => void;
@@ -68,9 +101,6 @@ function ReferenceRow({
     <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-muted/40 group transition-colors">
       <div className="flex-1 min-w-0 grid grid-cols-[1fr_1.5fr] gap-4 items-center">
         <div className="flex items-center gap-2 min-w-0">
-          {item.isSensitive && (
-            <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-          )}
           <span className="text-sm font-medium truncate">{item.label}</span>
         </div>
         <div className="flex items-center gap-2 min-w-0">
@@ -89,29 +119,194 @@ function ReferenceRow({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy} title="Copy value">
-          {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-        </Button>
-        {isAdmin && (
-          <>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(item)}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-destructive hover:text-destructive"
-              onClick={() => onDelete(item)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </>
-        )}
+      <div className="flex items-center gap-2 shrink-0">
+        {isAdmin && <VisibilityBadge mode={item.visibilityMode} />}
+
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy} title="Copy value">
+            {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+          </Button>
+          {isAdmin && (
+            <>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(item)}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-destructive hover:text-destructive"
+                onClick={() => onDelete(item)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
+// ── Visibility picker ────────────────────────────────────────────────────────
+
+function VisibilityPicker({
+  mode,
+  userIds,
+  roles,
+  onModeChange,
+  onUserIdsChange,
+  onRolesChange,
+}: {
+  mode: ReferenceVisibilityMode;
+  userIds: number[];
+  roles: string[];
+  onModeChange: (m: ReferenceVisibilityMode) => void;
+  onUserIdsChange: (ids: number[]) => void;
+  onRolesChange: (r: string[]) => void;
+}) {
+  const { data: users } = useTrackerListUsers();
+  const nonAdminUsers = (Array.isArray(users) ? users : []).filter((u) => u.role !== "admin");
+
+  const toggleRole = (role: string) => {
+    onRolesChange(roles.includes(role) ? roles.filter((r) => r !== role) : [...roles, role]);
+  };
+
+  const toggleUser = (id: number) => {
+    onUserIdsChange(userIds.includes(id) ? userIds.filter((u) => u !== id) : [...userIds, id]);
+  };
+
+  return (
+    <div className="space-y-3">
+      <Label>Visibility</Label>
+      <div className="space-y-2">
+        {(["admin_only", "all", "custom"] as ReferenceVisibilityMode[]).map((m) => (
+          <label key={m} className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="visibility_mode"
+              value={m}
+              checked={mode === m}
+              onChange={() => onModeChange(m)}
+              className="accent-primary"
+            />
+            <span className="text-sm">
+              {m === "admin_only" && "Admin only (private)"}
+              {m === "all" && "Everyone"}
+              {m === "custom" && "Custom — specific users / roles"}
+            </span>
+          </label>
+        ))}
+      </div>
+
+      {mode === "custom" && (
+        <div className="rounded-lg border p-3 space-y-3 bg-muted/30">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Roles</p>
+            <div className="flex gap-4">
+              {["developer", "tester"].map((role) => (
+                <label key={role} className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={roles.includes(role)}
+                    onCheckedChange={() => toggleRole(role)}
+                  />
+                  <span className="text-sm capitalize">{role}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {nonAdminUsers.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Specific users</p>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {nonAdminUsers.map((u) => (
+                  <label key={u.id} className="flex items-center gap-2 cursor-pointer py-0.5">
+                    <Checkbox
+                      checked={userIds.includes(u.id)}
+                      onCheckedChange={() => toggleUser(u.id)}
+                    />
+                    <span className="text-sm">{u.name}</span>
+                    <span className="text-xs text-muted-foreground capitalize">({u.role})</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Reference form fields ────────────────────────────────────────────────────
+
+function ReferenceForm({
+  label,
+  value,
+  sensitive,
+  visibilityMode,
+  visibilityUserIds,
+  visibilityRoles,
+  onLabelChange,
+  onValueChange,
+  onSensitiveChange,
+  onVisibilityModeChange,
+  onVisibilityUserIdsChange,
+  onVisibilityRolesChange,
+}: {
+  label: string;
+  value: string;
+  sensitive: boolean;
+  visibilityMode: ReferenceVisibilityMode;
+  visibilityUserIds: number[];
+  visibilityRoles: string[];
+  onLabelChange: (v: string) => void;
+  onValueChange: (v: string) => void;
+  onSensitiveChange: (v: boolean) => void;
+  onVisibilityModeChange: (m: ReferenceVisibilityMode) => void;
+  onVisibilityUserIdsChange: (ids: number[]) => void;
+  onVisibilityRolesChange: (r: string[]) => void;
+}) {
+  return (
+    <div className="space-y-4 py-2">
+      <div>
+        <Label htmlFor="ref-label">Label</Label>
+        <Input
+          id="ref-label"
+          value={label}
+          onChange={(e) => onLabelChange(e.target.value)}
+          placeholder="e.g. Staging URL, Admin Password"
+        />
+      </div>
+      <div>
+        <Label htmlFor="ref-value">Value</Label>
+        <Input
+          id="ref-value"
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          placeholder="e.g. https://staging.example.com"
+          type={sensitive ? "password" : "text"}
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <Switch id="ref-sensitive" checked={sensitive} onCheckedChange={onSensitiveChange} />
+        <Label htmlFor="ref-sensitive" className="cursor-pointer">
+          Sensitive (mask value by default)
+        </Label>
+      </div>
+      <VisibilityPicker
+        mode={visibilityMode}
+        userIds={visibilityUserIds}
+        roles={visibilityRoles}
+        onModeChange={onVisibilityModeChange}
+        onUserIdsChange={onVisibilityUserIdsChange}
+        onRolesChange={onVisibilityRolesChange}
+      />
+    </div>
+  );
+}
+
+// ── Per-project card ─────────────────────────────────────────────────────────
 
 function ProjectReferencesCard({
   project,
@@ -127,9 +322,13 @@ function ProjectReferencesCard({
   const [addOpen, setAddOpen] = useState(false);
   const [editRef, setEditRef] = useState<ProjectReference | null>(null);
   const [deleteRef, setDeleteRef] = useState<ProjectReference | null>(null);
+
   const [formLabel, setFormLabel] = useState("");
   const [formValue, setFormValue] = useState("");
   const [formSensitive, setFormSensitive] = useState(false);
+  const [formMode, setFormMode] = useState<ReferenceVisibilityMode>("admin_only");
+  const [formUserIds, setFormUserIds] = useState<number[]>([]);
+  const [formRoles, setFormRoles] = useState<string[]>([]);
 
   const createMutation = useTrackerCreateReference(project.id, {
     onSuccess: () => {
@@ -163,16 +362,37 @@ function ProjectReferencesCard({
     setFormLabel("");
     setFormValue("");
     setFormSensitive(false);
+    setFormMode("admin_only");
+    setFormUserIds([]);
+    setFormRoles([]);
   }
 
   function openEdit(ref: ProjectReference) {
     setFormLabel(ref.label);
     setFormValue(ref.value);
     setFormSensitive(ref.isSensitive);
+    setFormMode(ref.visibilityMode);
+    setFormUserIds(ref.visibilityUserIds);
+    setFormRoles(ref.visibilityRoles);
     setEditRef(ref);
   }
 
   const list = Array.isArray(refs) ? refs : [];
+
+  const formProps = {
+    label: formLabel,
+    value: formValue,
+    sensitive: formSensitive,
+    visibilityMode: formMode,
+    visibilityUserIds: formUserIds,
+    visibilityRoles: formRoles,
+    onLabelChange: setFormLabel,
+    onValueChange: setFormValue,
+    onSensitiveChange: setFormSensitive,
+    onVisibilityModeChange: setFormMode,
+    onVisibilityUserIdsChange: setFormUserIds,
+    onVisibilityRolesChange: setFormRoles,
+  };
 
   return (
     <>
@@ -186,11 +406,7 @@ function ProjectReferencesCard({
               <CardTitle className="text-base">{project.name}</CardTitle>
             </div>
             {isAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { resetForm(); setAddOpen(true); }}
-              >
+              <Button variant="outline" size="sm" onClick={() => { resetForm(); setAddOpen(true); }}>
                 <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
                 Add
               </Button>
@@ -212,7 +428,7 @@ function ProjectReferencesCard({
               {list.map((ref) => (
                 <ReferenceRow
                   key={ref.id}
-                  ref={ref}
+                  item={ref}
                   isAdmin={isAdmin}
                   onEdit={openEdit}
                   onDelete={setDeleteRef}
@@ -225,26 +441,28 @@ function ProjectReferencesCard({
 
       {/* Add dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               if (!formLabel.trim() || !formValue.trim()) return;
-              createMutation.mutate({ label: formLabel.trim(), value: formValue.trim(), isSensitive: formSensitive });
+              createMutation.mutate({
+                label: formLabel.trim(),
+                value: formValue.trim(),
+                isSensitive: formSensitive,
+                visibilityMode: formMode,
+                visibilityUserIds: formMode === "custom" ? formUserIds : [],
+                visibilityRoles: formMode === "custom" ? formRoles : [],
+              });
             }}
           >
             <DialogHeader>
               <DialogTitle>Add Reference</DialogTitle>
-              <DialogDescription>Add a shared reference to <strong>{project.name}</strong>.</DialogDescription>
+              <DialogDescription>
+                Add a shared reference to <strong>{project.name}</strong>.
+              </DialogDescription>
             </DialogHeader>
-            <ReferenceForm
-              label={formLabel}
-              value={formValue}
-              sensitive={formSensitive}
-              onLabelChange={setFormLabel}
-              onValueChange={setFormValue}
-              onSensitiveChange={setFormSensitive}
-            />
+            <ReferenceForm {...formProps} />
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => setAddOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={!formLabel.trim() || !formValue.trim() || createMutation.isPending}>
@@ -258,14 +476,21 @@ function ProjectReferencesCard({
 
       {/* Edit dialog */}
       <Dialog open={editRef !== null} onOpenChange={() => setEditRef(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               if (!editRef || !formLabel.trim() || !formValue.trim()) return;
               updateMutation.mutate({
                 refId: editRef.id,
-                body: { label: formLabel.trim(), value: formValue.trim(), isSensitive: formSensitive },
+                body: {
+                  label: formLabel.trim(),
+                  value: formValue.trim(),
+                  isSensitive: formSensitive,
+                  visibilityMode: formMode,
+                  visibilityUserIds: formMode === "custom" ? formUserIds : [],
+                  visibilityRoles: formMode === "custom" ? formRoles : [],
+                },
               });
             }}
           >
@@ -273,14 +498,7 @@ function ProjectReferencesCard({
               <DialogTitle>Edit Reference</DialogTitle>
               <DialogDescription>Update this reference entry.</DialogDescription>
             </DialogHeader>
-            <ReferenceForm
-              label={formLabel}
-              value={formValue}
-              sensitive={formSensitive}
-              onLabelChange={setFormLabel}
-              onValueChange={setFormValue}
-              onSensitiveChange={setFormSensitive}
-            />
+            <ReferenceForm {...formProps} />
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => setEditRef(null)}>Cancel</Button>
               <Button type="submit" disabled={!formLabel.trim() || !formValue.trim() || updateMutation.isPending}>
@@ -310,7 +528,9 @@ function ProjectReferencesCard({
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => setDeleteRef(null)}>Cancel</Button>
               <Button type="submit" variant="destructive" disabled={deleteMutation.isPending}>
-                {deleteMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                {deleteMutation.isPending
+                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  : <Trash2 className="w-4 h-4 mr-2" />}
                 Delete
               </Button>
             </DialogFooter>
@@ -321,55 +541,7 @@ function ProjectReferencesCard({
   );
 }
 
-function ReferenceForm({
-  label,
-  value,
-  sensitive,
-  onLabelChange,
-  onValueChange,
-  onSensitiveChange,
-}: {
-  label: string;
-  value: string;
-  sensitive: boolean;
-  onLabelChange: (v: string) => void;
-  onValueChange: (v: string) => void;
-  onSensitiveChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="space-y-4 py-2">
-      <div>
-        <Label htmlFor="ref-label">Label</Label>
-        <Input
-          id="ref-label"
-          value={label}
-          onChange={(e) => onLabelChange(e.target.value)}
-          placeholder="e.g. Staging URL, Admin Password"
-        />
-      </div>
-      <div>
-        <Label htmlFor="ref-value">Value</Label>
-        <Input
-          id="ref-value"
-          value={value}
-          onChange={(e) => onValueChange(e.target.value)}
-          placeholder="e.g. https://staging.example.com"
-          type={sensitive ? "password" : "text"}
-        />
-      </div>
-      <div className="flex items-center gap-3">
-        <Switch
-          id="ref-sensitive"
-          checked={sensitive}
-          onCheckedChange={onSensitiveChange}
-        />
-        <Label htmlFor="ref-sensitive" className="cursor-pointer">
-          Sensitive (mask value by default)
-        </Label>
-      </div>
-    </div>
-  );
-}
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function References() {
   const { user } = useAuth();
@@ -383,7 +555,7 @@ export default function References() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">References</h1>
         <p className="text-muted-foreground">
-          Shared info per project — URLs, credentials, and other notes.
+          Shared info per project — URLs, credentials, and notes.
         </p>
       </div>
 
