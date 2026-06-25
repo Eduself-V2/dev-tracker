@@ -570,7 +570,7 @@ components:
           type: integer
         kind:
           type: string
-          enum: [created, transitioned, comment, assigned]
+          enum: [created, transitioned, comment, assigned, notified, reply]
         fromStatus:
           type: string
           nullable: true

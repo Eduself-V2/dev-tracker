@@ -223,6 +223,7 @@ function TimelineView({ events, expanded, onToggle }: { events: any[]; expanded:
     assigned: "assigned",
     comment: "commented",
     notified: "sent mail",
+    reply: "replied",
   };
 
   const kindIcon: Record<string, any> = {
@@ -231,6 +232,7 @@ function TimelineView({ events, expanded, onToggle }: { events: any[]; expanded:
     assigned: User,
     comment: MessageSquare,
     notified: Mail,
+    reply: CornerDownRight,
   };
 
   return (
@@ -854,101 +856,86 @@ export default function RequirementDetail() {
                         </div>
 
                         {/* Replies */}
-                        {replies.length > 0 && (
-                          <div className="ml-14 mt-3 space-y-3 border-l-2 border-border/40 pl-4">
+                        {(replies.length > 0 || replyingToId === comment.id) && (
+                          <div className="mt-3 ml-6 border-l-2 border-primary/20 pl-4 space-y-3">
                             {replies.map((reply) => (
                               <div key={reply.id} className="flex gap-3">
-                                <Avatar className="w-8 h-8 border shadow-sm shrink-0">
-                                  <AvatarFallback className="bg-primary/5 text-primary text-xs font-medium">{reply.authorName.charAt(0)}</AvatarFallback>
+                                <Avatar className="w-7 h-7 border shadow-sm shrink-0 mt-0.5">
+                                  <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">{reply.authorName.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                <div className="flex-1 space-y-1">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-semibold text-xs">{reply.authorName}</span>
-                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{reply.authorRole}</Badge>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs text-muted-foreground">
-                                        {formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true })}
-                                      </span>
-                                      {canEditComment(reply) && (
-                                        <div className="flex items-center gap-1">
-                                          <button
-                                            onClick={() => startEdit(reply)}
-                                            className="p-1 rounded hover:bg-muted transition-colors"
-                                            title="Edit"
-                                          >
-                                            <Pencil className="w-3 h-3 text-muted-foreground" />
-                                          </button>
-                                          <button
-                                            onClick={() => setDeleteCommentId(reply.id)}
-                                            className="p-1 rounded hover:bg-destructive/10 transition-colors"
-                                            title="Delete"
-                                          >
-                                            <Trash2 className="w-3 h-3 text-destructive/70" />
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {editingCommentId === reply.id ? (
-                                    <div className="space-y-2">
-                                      <Textarea
-                                        value={editBody}
-                                        onChange={(e) => setEditBody(e.target.value)}
-                                        className="min-h-[60px] text-sm bg-background"
-                                      />
-                                      <div className="flex justify-end gap-2">
-                                        <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                                          <X className="w-3.5 h-3.5 mr-1" /> Cancel
-                                        </Button>
-                                        <Button size="sm" onClick={() => saveEdit(reply.id)} disabled={!editBody.trim()}>
-                                          <Check className="w-3.5 h-3.5 mr-1" /> Save
-                                        </Button>
+                                <div className="flex-1 min-w-0">
+                                  <div className="bg-muted/50 rounded-lg rounded-tl-none border border-border/40 overflow-hidden">
+                                    <div className="flex items-center justify-between px-3 py-1.5 bg-muted/60 border-b border-border/30">
+                                      <div className="flex items-center gap-1.5">
+                                        <CornerDownRight className="w-3 h-3 text-primary/50 shrink-0" />
+                                        <span className="font-semibold text-xs">{reply.authorName}</span>
+                                        <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5">{reply.authorRole}</Badge>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] text-muted-foreground">
+                                          {formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true })}
+                                        </span>
+                                        {canEditComment(reply) && (
+                                          <>
+                                            <button onClick={() => startEdit(reply)} className="p-0.5 rounded hover:bg-muted transition-colors" title="Edit">
+                                              <Pencil className="w-3 h-3 text-muted-foreground" />
+                                            </button>
+                                            <button onClick={() => setDeleteCommentId(reply.id)} className="p-0.5 rounded hover:bg-destructive/10 transition-colors" title="Delete">
+                                              <Trash2 className="w-3 h-3 text-destructive/70" />
+                                            </button>
+                                          </>
+                                        )}
                                       </div>
                                     </div>
-                                  ) : (
-                                    <div className="bg-muted/30 p-2.5 rounded-lg rounded-tl-none border border-border/40 text-sm">
-                                      <p className="whitespace-pre-wrap">{renderWithLinks(reply.body)}</p>
-                                    </div>
-                                  )}
+                                    {editingCommentId === reply.id ? (
+                                      <div className="p-2 space-y-2">
+                                        <Textarea
+                                          value={editBody}
+                                          onChange={(e) => setEditBody(e.target.value)}
+                                          className="min-h-[60px] text-sm bg-background"
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                          <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                                            <X className="w-3.5 h-3.5 mr-1" /> Cancel
+                                          </Button>
+                                          <Button size="sm" onClick={() => saveEdit(reply.id)} disabled={!editBody.trim()}>
+                                            <Check className="w-3.5 h-3.5 mr-1" /> Save
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <p className="px-3 py-2 text-sm whitespace-pre-wrap">{renderWithLinks(reply.body)}</p>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             ))}
-                          </div>
-                        )}
 
-                        {/* Reply composer */}
-                        {replyingToId === comment.id && (
-                          <div className="ml-14 mt-3 flex gap-3">
-                            <Avatar className="w-8 h-8 border shadow-sm shrink-0 hidden sm:block">
-                              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">{user?.name?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 space-y-2">
-                              <Textarea
-                                placeholder={`Reply to ${comment.authorName}...`}
-                                value={replyBody}
-                                onChange={(e) => setReplyBody(e.target.value)}
-                                className="min-h-[70px] text-sm bg-background resize-none"
-                                autoFocus
-                              />
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => { setReplyingToId(null); setReplyBody(""); }}
-                                >
-                                  <X className="w-3.5 h-3.5 mr-1" /> Cancel
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handlePostReply(comment.id)}
-                                  disabled={!replyBody.trim() || postingReply}
-                                >
-                                  {postingReply ? "Posting..." : "Post Reply"}
-                                </Button>
+                            {/* Reply composer */}
+                            {replyingToId === comment.id && (
+                              <div className="flex gap-3">
+                                <Avatar className="w-7 h-7 border shadow-sm shrink-0 mt-0.5 hidden sm:block">
+                                  <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-semibold">{user?.name?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 space-y-2">
+                                  <Textarea
+                                    placeholder={`Replying to ${comment.authorName}...`}
+                                    value={replyBody}
+                                    onChange={(e) => setReplyBody(e.target.value)}
+                                    className="min-h-[70px] text-sm bg-background resize-none"
+                                    autoFocus
+                                  />
+                                  <div className="flex justify-end gap-2">
+                                    <Button variant="ghost" size="sm" onClick={() => { setReplyingToId(null); setReplyBody(""); }}>
+                                      <X className="w-3.5 h-3.5 mr-1" /> Cancel
+                                    </Button>
+                                    <Button size="sm" onClick={() => handlePostReply(comment.id)} disabled={!replyBody.trim() || postingReply}>
+                                      {postingReply ? "Posting..." : "Post Reply"}
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
                         )}
                       </div>

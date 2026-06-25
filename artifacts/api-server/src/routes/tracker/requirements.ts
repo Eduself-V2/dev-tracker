@@ -849,7 +849,7 @@ router.post("/:id/comments", async (req, res, next) => {
     const { id } = TrackerAddCommentParams.parse(req.params);
     const body = TrackerAddCommentBody.parse(req.body);
     const me = req.trackerUser!;
-    const parentId: number | null = Number.isInteger(req.body?.parentId) ? req.body.parentId : null;
+    const parentId: number | null = body.parentId ?? null;
 
     const [existRows] = await trackerPool.query(
       "SELECT id FROM requirements WHERE id = ?",
@@ -878,6 +878,11 @@ router.post("/:id/comments", async (req, res, next) => {
     if (parentId === null) {
       await trackerPool.query(
         "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'comment', ?, ?)",
+        [id, me.id, body.body.slice(0, 280)],
+      );
+    } else {
+      await trackerPool.query(
+        "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'reply', ?, ?)",
         [id, me.id, body.body.slice(0, 280)],
       );
     }

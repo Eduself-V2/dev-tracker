@@ -253,7 +253,14 @@ export const TrackerGetRequirementResponse = zod.object({
     zod.object({
       id: zod.number(),
       requirementId: zod.number(),
-      kind: zod.enum(["created", "transitioned", "comment", "assigned"]),
+      kind: zod.enum([
+        "created",
+        "transitioned",
+        "comment",
+        "assigned",
+        "notified",
+        "reply",
+      ]),
       fromStatus: zod.string().nullish(),
       toStatus: zod.string().nullish(),
       note: zod.string().nullish(),
@@ -372,7 +379,14 @@ export const TrackerTransitionRequirementResponse = zod.object({
     zod.object({
       id: zod.number(),
       requirementId: zod.number(),
-      kind: zod.enum(["created", "transitioned", "comment", "assigned"]),
+      kind: zod.enum([
+        "created",
+        "transitioned",
+        "comment",
+        "assigned",
+        "notified",
+        "reply",
+      ]),
       fromStatus: zod.string().nullish(),
       toStatus: zod.string().nullish(),
       note: zod.string().nullish(),

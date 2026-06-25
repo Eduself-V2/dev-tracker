@@ -14,4 +14,6 @@ export const RequirementEventKind = {
   transitioned: "transitioned",
   comment: "comment",
   assigned: "assigned",
+  notified: "notified",
+  reply: "reply",
 } as const;
