@@ -19,6 +19,7 @@ import RequirementEdit from "@/pages/RequirementEdit";
 import Users from "@/pages/Users";
 import Projects from "@/pages/Projects";
 import Reports from "@/pages/Reports";
+import References from "@/pages/References";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ function Router() {
         <Route path="/requirements/:id" component={RequirementDetail} />
         <Route path="/users" component={Users} />
         <Route path="/projects" component={Projects} />
+        <Route path="/references" component={References} />
         <Route path="/reports" component={Reports} />
         <Route component={NotFound} />
       </Switch>

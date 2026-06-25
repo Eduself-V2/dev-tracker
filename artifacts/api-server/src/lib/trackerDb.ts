@@ -85,6 +85,18 @@ export interface CommentRow {
   created_at: Date;
 }
 
+export interface ProjectReferenceRow {
+  id: number;
+  project_id: number;
+  label: string;
+  value: string;
+  is_sensitive: number;
+  created_by: number;
+  creator_name: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export interface AttachmentRow {
   id: number;
   requirement_id: number;

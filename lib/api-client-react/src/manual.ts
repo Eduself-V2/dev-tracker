@@ -2,6 +2,136 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UseMutationOptions, UseQueryOptions } from "@tanstack/react-query";
 import { customFetch } from "./custom-fetch";
 
+// ── Project References ───────────────────────────────────────────────────────
+
+export interface ProjectReference {
+  id: number;
+  projectId: number;
+  label: string;
+  value: string;
+  isSensitive: boolean;
+  createdBy: number;
+  creatorName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProjectReferenceBody {
+  label: string;
+  value: string;
+  isSensitive?: boolean;
+}
+
+export interface UpdateProjectReferenceBody {
+  label?: string;
+  value?: string;
+  isSensitive?: boolean;
+}
+
+export const getTrackerListReferencesQueryKey = (projectId: number) =>
+  [`/api/tracker/projects/${projectId}/references`] as const;
+
+export const trackerListReferences = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<ProjectReference[]> =>
+  customFetch<ProjectReference[]>(`/api/tracker/projects/${projectId}/references`, {
+    ...options,
+    method: "GET",
+  });
+
+export function useTrackerListReferences(
+  projectId: number,
+  queryOptions?: UseQueryOptions<ProjectReference[]>,
+) {
+  return useQuery<ProjectReference[]>({
+    queryKey: getTrackerListReferencesQueryKey(projectId),
+    queryFn: ({ signal }) => trackerListReferences(projectId, { signal }),
+    ...queryOptions,
+  });
+}
+
+export const trackerCreateReference = async (
+  projectId: number,
+  body: CreateProjectReferenceBody,
+  options?: RequestInit,
+): Promise<ProjectReference> =>
+  customFetch<ProjectReference>(`/api/tracker/projects/${projectId}/references`, {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(body),
+  });
+
+export function useTrackerCreateReference(
+  projectId: number,
+  mutationOptions?: UseMutationOptions<ProjectReference, unknown, CreateProjectReferenceBody>,
+) {
+  const qc = useQueryClient();
+  return useMutation<ProjectReference, unknown, CreateProjectReferenceBody>({
+    mutationFn: (body) => trackerCreateReference(projectId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getTrackerListReferencesQueryKey(projectId) });
+    },
+    ...mutationOptions,
+  });
+}
+
+export const trackerUpdateReference = async (
+  projectId: number,
+  refId: number,
+  body: UpdateProjectReferenceBody,
+  options?: RequestInit,
+): Promise<ProjectReference> =>
+  customFetch<ProjectReference>(`/api/tracker/projects/${projectId}/references/${refId}`, {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(body),
+  });
+
+export function useTrackerUpdateReference(
+  projectId: number,
+  mutationOptions?: UseMutationOptions<
+    ProjectReference,
+    unknown,
+    { refId: number; body: UpdateProjectReferenceBody }
+  >,
+) {
+  const qc = useQueryClient();
+  return useMutation<ProjectReference, unknown, { refId: number; body: UpdateProjectReferenceBody }>({
+    mutationFn: ({ refId, body }) => trackerUpdateReference(projectId, refId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getTrackerListReferencesQueryKey(projectId) });
+    },
+    ...mutationOptions,
+  });
+}
+
+export const trackerDeleteReference = async (
+  projectId: number,
+  refId: number,
+  options?: RequestInit,
+): Promise<void> =>
+  customFetch<void>(`/api/tracker/projects/${projectId}/references/${refId}`, {
+    ...options,
+    method: "DELETE",
+  });
+
+export function useTrackerDeleteReference(
+  projectId: number,
+  mutationOptions?: UseMutationOptions<void, unknown, number>,
+) {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, number>({
+    mutationFn: (refId) => trackerDeleteReference(projectId, refId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getTrackerListReferencesQueryKey(projectId) });
+    },
+    ...mutationOptions,
+  });
+}
+
 export interface PinItem {
   id: number;
   requirementId: number;

@@ -100,6 +100,22 @@ CREATE TABLE requirement_assignees (
   CONSTRAINT fk_ra_assignedby FOREIGN KEY (assigned_by_id) REFERENCES users (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE project_references (
+  id int NOT NULL AUTO_INCREMENT,
+  project_id int NOT NULL,
+  label varchar(200) NOT NULL,
+  value text NOT NULL,
+  is_sensitive tinyint(1) NOT NULL DEFAULT 0,
+  created_by int NOT NULL,
+  created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY fk_pref_project (project_id),
+  KEY fk_pref_user (created_by),
+  CONSTRAINT fk_pref_project FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
+  CONSTRAINT fk_pref_user FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE requirement_attachments (
   id int NOT NULL AUTO_INCREMENT,
   requirement_id int NOT NULL,

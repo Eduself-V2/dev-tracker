@@ -6,6 +6,7 @@ import requirementsRouter from "./requirements";
 import attachmentsRouter from "./attachments";
 import statsRouter from "./stats";
 import pinsRouter from "./pins";
+import referencesRouter from "./references";
 import { requireTrackerAuth } from "../../middlewares/requireTrackerAuth";
 
 const router: IRouter = Router();
@@ -17,5 +18,6 @@ router.use("/requirements", requireTrackerAuth, requirementsRouter);
 router.use("/requirements/:id/attachments", requireTrackerAuth, attachmentsRouter);
 router.use("/stats", requireTrackerAuth, statsRouter);
 router.use("/pins", requireTrackerAuth, pinsRouter);
+router.use("/projects/:projectId/references", requireTrackerAuth, referencesRouter);
 
 export default router;
