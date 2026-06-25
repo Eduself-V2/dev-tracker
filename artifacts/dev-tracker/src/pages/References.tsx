@@ -98,13 +98,12 @@ function ReferenceRow({
   };
 
   return (
-    <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-muted/40 group transition-colors">
-      <div className="flex-1 min-w-0 grid grid-cols-[1fr_1.5fr] gap-4 items-center">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-medium truncate">{item.label}</span>
-        </div>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm text-muted-foreground font-mono truncate">
+    <div className="flex items-start gap-3 py-3 px-3 rounded-lg hover:bg-muted/40 group transition-colors">
+      {/* Label + value stacked */}
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <p className="text-sm font-medium leading-snug">{item.label}</p>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs text-muted-foreground font-mono break-all">
             {item.isSensitive && !revealed ? "••••••••" : item.value}
           </span>
           {item.isSensitive && (
@@ -113,16 +112,16 @@ function ReferenceRow({
               className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
               title={revealed ? "Hide" : "Reveal"}
             >
-              {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Visibility badge + actions */}
+      <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
         {isAdmin && <VisibilityBadge mode={item.visibilityMode} />}
-
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy} title="Copy value">
             {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
           </Button>
