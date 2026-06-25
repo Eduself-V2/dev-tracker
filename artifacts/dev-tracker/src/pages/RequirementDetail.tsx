@@ -10,6 +10,10 @@ import {
   getTrackerListRequirementsQueryKey,
   getTrackerStatsSummaryQueryKey,
   getTrackerListUsersQueryKey,
+  useTrackerListPins,
+  useTrackerPinTask,
+  useTrackerUnpinTask,
+  getTrackerListPinsQueryKey,
 } from "@workspace/api-client-react";
 import type { TransitionRequirementToStatus } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -61,6 +65,8 @@ import {
   Volume2,
   UserPlus,
   ChevronsUpDown,
+  Pin,
+  Timer,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -375,6 +381,15 @@ export default function RequirementDetail() {
   const [delegateOpen, setDelegateOpen] = useState(false);
   const [delegateUserIds, setDelegateUserIds] = useState<number[]>([]);
   const [delegating, setDelegating] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [pinSelectedMinutes, setPinSelectedMinutes] = useState<number | null>(null);
+
+  const { data: pins } = useTrackerListPins();
+  const pinMutation = useTrackerPinTask();
+  const unpinMutation = useTrackerUnpinTask();
+
+  const currentPin = (Array.isArray(pins) ? pins : []).find((p) => p.requirementId === reqId);
+  const isPinned = !!currentPin;
 
   const { data: allUsersData } = useTrackerListUsers({
     query: { queryKey: getTrackerListUsersQueryKey() },
@@ -634,8 +649,105 @@ export default function RequirementDetail() {
     requirement.testerIds?.forEach((tid, i) => addPerson(tid, requirement.testerNames?.[i], "QA"));
   }
 
+  const PIN_TIME_OPTIONS: { label: string; minutes: number | null }[] = [
+    { label: "No commitment", minutes: null },
+    { label: "30 minutes", minutes: 30 },
+    { label: "1 hour", minutes: 60 },
+    { label: "2 hours", minutes: 120 },
+    { label: "4 hours", minutes: 240 },
+    { label: "1 day (8h)", minutes: 480 },
+  ];
+
+  const handlePin = () => {
+    pinMutation.mutate(
+      { requirementId: reqId, committedMinutes: pinSelectedMinutes },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getTrackerListPinsQueryKey() });
+          setPinDialogOpen(false);
+          toast({ title: isPinned ? "Goal updated" : "Task pinned to Today's Goals" });
+        },
+        onError: () => toast({ title: "Failed to pin task", variant: "destructive" }),
+      },
+    );
+  };
+
+  const handleUnpin = () => {
+    unpinMutation.mutate(reqId, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getTrackerListPinsQueryKey() });
+        setPinDialogOpen(false);
+        toast({ title: "Task removed from Today's Goals" });
+      },
+      onError: () => toast({ title: "Failed to unpin task", variant: "destructive" }),
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-500 pb-20">
+      {/* Pin dialog */}
+      <Dialog open={pinDialogOpen} onOpenChange={setPinDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pin className="h-4 w-4 text-primary" />
+              {isPinned ? "Update Goal" : "Set Today's Goal"}
+            </DialogTitle>
+            <DialogDescription className="line-clamp-2">{requirement?.title}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Time commitment</p>
+            <div className="grid grid-cols-2 gap-2">
+              {PIN_TIME_OPTIONS.map((opt) => (
+                <button
+                  key={opt.minutes ?? "none"}
+                  onClick={() => setPinSelectedMinutes(opt.minutes)}
+                  className={`text-sm px-3 py-2 rounded-lg border transition-colors text-left ${
+                    pinSelectedMinutes === opt.minutes
+                      ? "border-primary bg-primary/10 text-primary font-medium"
+                      : "border-border hover:bg-muted"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {isPinned && currentPin?.committedMinutes && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
+                <Timer className="w-3 h-3" />
+                Currently: {currentPin.committedMinutes < 60
+                  ? `${currentPin.committedMinutes}m`
+                  : currentPin.committedMinutes === 480
+                    ? "1 day"
+                    : `${currentPin.committedMinutes / 60}h`} commitment
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex gap-2 mt-2">
+            {isPinned && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={handleUnpin}
+                disabled={pinMutation.isPending || unpinMutation.isPending}
+              >
+                Unpin
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={handlePin}
+              disabled={pinMutation.isPending || unpinMutation.isPending}
+              className="flex-1"
+            >
+              <Pin className="h-3.5 w-3.5 mr-1.5" />
+              {isPinned ? "Update" : "Pin Task"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link href="/requirements">
@@ -659,6 +771,18 @@ export default function RequirementDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant={isPinned ? "default" : "outline"}
+            size="sm"
+            className={`gap-2 ${isPinned ? "bg-primary/10 text-primary border-primary/40 hover:bg-primary/20" : ""}`}
+            onClick={() => {
+              setPinSelectedMinutes(currentPin?.committedMinutes ?? null);
+              setPinDialogOpen(true);
+            }}
+          >
+            <Pin className="w-4 h-4" />
+            {isPinned ? "Pinned" : "Pin"}
+          </Button>
           {(user?.role === "admin" || (user?.role === "developer" && requirement.developerId === user?.id)) && (
             <Link href={`/requirements/${reqId}/edit`}>
               <Button variant="outline" size="sm" className="gap-2">
