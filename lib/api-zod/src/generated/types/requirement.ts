@@ -26,4 +26,5 @@ export interface Requirement {
   createdAt: Date;
   updatedAt: Date;
   lastActivityAt?: Date;
+  lastUpdatedByName?: string | null;
 }

@@ -60,6 +60,7 @@ export interface RequirementListRow extends RequirementRow {
   assignee_names: string | null;
   project_name: string;
   last_activity_at?: Date;
+  last_actor_name?: string | null;
 }
 
 export interface EventRow {

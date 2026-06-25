@@ -286,6 +286,9 @@ export default function Dashboard() {
                         </span>
                         <span className="text-sm text-muted-foreground">
                           Last activity {format(new Date(req.lastActivityAt ?? req.updatedAt), "MMM d, h:mm a")}
+                          {req.lastUpdatedByName && (
+                            <span className="ml-1">· by <span className="font-medium text-foreground">{req.lastUpdatedByName}</span></span>
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center gap-4">

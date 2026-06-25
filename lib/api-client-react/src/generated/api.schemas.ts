@@ -137,6 +137,7 @@ export interface Requirement {
   createdAt: string;
   updatedAt: string;
   lastActivityAt?: string;
+  lastUpdatedByName?: string | null;
 }
 
 export type RequirementEventKind =

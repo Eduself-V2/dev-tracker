@@ -51,7 +51,11 @@ router.get("/summary", async (req, res, next) => {
               GROUP_CONCAT(DISTINCT t.name ORDER BY rt.tester_id SEPARATOR ',') AS tester_names,
               ANY_VALUE(a.name) AS assignee_name,
               ANY_VALUE(p.name) AS project_name,
-              GREATEST(r.updated_at, COALESCE(MAX(e.created_at), r.updated_at)) AS last_activity_at
+              GREATEST(r.updated_at, COALESCE(MAX(e.created_at), r.updated_at)) AS last_activity_at,
+              (SELECT u.name FROM requirement_events re2
+               JOIN users u ON u.id = re2.actor_id
+               WHERE re2.requirement_id = r.id
+               ORDER BY re2.created_at DESC LIMIT 1) AS last_actor_name
        FROM requirements r
        JOIN users d ON d.id = r.developer_id
        LEFT JOIN requirement_testers rt ON rt.requirement_id = r.id
@@ -91,6 +95,7 @@ router.get("/summary", async (req, res, next) => {
         createdAt: r.created_at.toISOString(),
         updatedAt: r.updated_at.toISOString(),
         lastActivityAt: (r.last_activity_at ?? r.updated_at).toISOString(),
+        lastUpdatedByName: r.last_actor_name ?? r.developer_name,
       })),
     });
   } catch (err) {
