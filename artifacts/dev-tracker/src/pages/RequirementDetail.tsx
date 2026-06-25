@@ -368,7 +368,9 @@ export default function RequirementDetail() {
   const [editBody, setEditBody] = useState("");
   const [replyingToId, setReplyingToId] = useState<number | null>(null);
   const [replyBody, setReplyBody] = useState("");
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
   const [postingReply, setPostingReply] = useState(false);
+  const [uploadingReply, setUploadingReply] = useState(false);
   const [timelineExpanded, setTimelineExpanded] = useState(false);
   const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<Set<number>>(new Set());
   const [deleteCommentId, setDeleteCommentId] = useState<number | null>(null);
@@ -488,7 +490,8 @@ export default function RequirementDetail() {
   };
 
   const handlePostReply = async (parentId: number) => {
-    const body = replyBody.trim();
+    const hasAudio = replyFiles.some((f) => f.type.startsWith("audio/"));
+    const body = replyBody.trim() || (hasAudio ? "[Voice note]" : "");
     if (!body) return;
     setPostingReply(true);
     try {
@@ -499,7 +502,30 @@ export default function RequirementDetail() {
         body: JSON.stringify({ body, parentId }),
       });
       if (!res.ok) throw new Error("Failed to post reply");
+      const newReply = await res.json();
+      if (replyFiles.length > 0) {
+        setUploadingReply(true);
+        try {
+          const formData = new FormData();
+          replyFiles.forEach((f) => formData.append("files", f));
+          formData.append("commentId", String(newReply.id));
+          const uploadRes = await fetch(`/api/tracker/requirements/${reqId}/attachments`, {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+          if (!uploadRes.ok) {
+            const uploadBody = await uploadRes.json().catch(() => ({}));
+            throw new Error((uploadBody as any).error ?? `Upload failed (${uploadRes.status})`);
+          }
+        } catch (uploadErr: any) {
+          toast({ title: uploadErr?.message ?? "Reply posted but files failed to upload", variant: "destructive" });
+        } finally {
+          setUploadingReply(false);
+        }
+      }
       setReplyBody("");
+      setReplyFiles([]);
       setReplyingToId(null);
       queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) });
     } catch {
@@ -1049,12 +1075,18 @@ export default function RequirementDetail() {
                                     className="min-h-[70px] text-sm bg-background resize-none"
                                     autoFocus
                                   />
+                                  <FileUploadZone files={replyFiles} onChange={setReplyFiles} compact />
+                                  <VoiceRecorder onRecorded={(file) => setReplyFiles((prev) => [...prev, file])} />
                                   <div className="flex justify-end gap-2">
-                                    <Button variant="ghost" size="sm" onClick={() => { setReplyingToId(null); setReplyBody(""); }}>
+                                    <Button variant="ghost" size="sm" onClick={() => { setReplyingToId(null); setReplyBody(""); setReplyFiles([]); }}>
                                       <X className="w-3.5 h-3.5 mr-1" /> Cancel
                                     </Button>
-                                    <Button size="sm" onClick={() => handlePostReply(comment.id)} disabled={!replyBody.trim() || postingReply}>
-                                      {postingReply ? "Posting..." : "Post Reply"}
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handlePostReply(comment.id)}
+                                      disabled={(!replyBody.trim() && !replyFiles.some((f) => f.type.startsWith("audio/"))) || postingReply || uploadingReply}
+                                    >
+                                      {postingReply ? (uploadingReply ? "Uploading..." : "Posting...") : "Post Reply"}
                                     </Button>
                                   </div>
                                 </div>
