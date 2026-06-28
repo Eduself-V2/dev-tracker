@@ -50,6 +50,13 @@ const ALLOWED_TRANSITIONS: Record<TrackerRole, Record<Status, Status[]>> = {
     confirmed: ["pushed_to_production", "open"],
     pushed_to_production: ["open"],
   },
+  manager: {
+    open: ["in_testing"],
+    in_testing: ["confirmed", "needs_fix"],
+    needs_fix: ["in_testing"],
+    confirmed: [],
+    pushed_to_production: [],
+  },
   developer: {
     open: ["in_testing"],
     in_testing: [],
@@ -217,7 +224,7 @@ router.get("/", async (req, res, next) => {
 router.post("/", async (req, res, next) => {
   try {
     const me = req.trackerUser!;
-    if (me.role !== "developer" && me.role !== "admin") {
+    if (me.role !== "developer" && me.role !== "admin" && me.role !== "manager") {
       res.status(403).json({ error: "Only developers can create requirements" });
       return;
     }
@@ -375,7 +382,10 @@ router.patch("/:id", async (req, res, next) => {
     }
     if (
       me.role !== "admin" &&
-      !(me.role === "developer" && existing.developer_id === me.id)
+      !(
+        (me.role === "developer" || me.role === "manager") &&
+        existing.developer_id === me.id
+      )
     ) {
       res
         .status(403)
@@ -708,7 +718,7 @@ router.post("/:id/assignees", async (req, res, next) => {
       "SELECT user_id FROM requirement_assignees WHERE requirement_id = ? AND user_id = ?",
       [reqId, me.id],
     );
-    if (me.role !== "admin" && (assigneeCheck as Array<{ user_id: number }>).length === 0) {
+    if (me.role !== "admin" && me.role !== "manager" && (assigneeCheck as Array<{ user_id: number }>).length === 0) {
       res.status(403).json({ error: "Only admins or current assignees can delegate this task" });
       return;
     }
@@ -785,7 +795,7 @@ router.post("/:id/assignees", async (req, res, next) => {
 router.post("/:id/notify", async (req, res, next) => {
   try {
     const me = req.trackerUser!;
-    if (me.role !== "admin") {
+    if (me.role !== "admin" && me.role !== "manager") {
       res.status(403).json({ error: "Only admins can send alerts" });
       return;
     }

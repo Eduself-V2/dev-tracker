@@ -29,7 +29,7 @@ export const TrackerLoginResponse = zod.object({
   email: zod.string(),
   mobile: zod.string().nullish(),
   username: zod.string(),
-  role: zod.enum(["admin", "developer", "tester"]),
+  role: zod.enum(["admin", "manager", "developer", "tester"]),
   createdAt: zod.coerce.date(),
   passwordResetRequired: zod.boolean(),
 });
@@ -43,7 +43,7 @@ export const TrackerMeResponse = zod.object({
   email: zod.string(),
   mobile: zod.string().nullish(),
   username: zod.string(),
-  role: zod.enum(["admin", "developer", "tester"]),
+  role: zod.enum(["admin", "manager", "developer", "tester"]),
   createdAt: zod.coerce.date(),
   passwordResetRequired: zod.boolean(),
 });
@@ -70,7 +70,7 @@ export const TrackerListUsersResponseItem = zod.object({
   email: zod.string(),
   mobile: zod.string().nullish(),
   username: zod.string(),
-  role: zod.enum(["admin", "developer", "tester"]),
+  role: zod.enum(["admin", "manager", "developer", "tester"]),
   createdAt: zod.coerce.date(),
   passwordResetRequired: zod.boolean(),
 });
@@ -99,7 +99,7 @@ export const TrackerCreateUserBody = zod.object({
     .string()
     .min(trackerCreateUserBodyPasswordMin)
     .max(trackerCreateUserBodyPasswordMax),
-  role: zod.enum(["admin", "developer", "tester"]),
+  role: zod.enum(["admin", "manager", "developer", "tester"]),
 });
 
 /**
@@ -123,7 +123,7 @@ export const TrackerUpdateUserBody = zod.object({
     .min(trackerUpdateUserBodyPasswordMin)
     .max(trackerUpdateUserBodyPasswordMax)
     .optional(),
-  role: zod.enum(["admin", "developer", "tester"]).optional(),
+  role: zod.enum(["admin", "manager", "developer", "tester"]).optional(),
 });
 
 export const TrackerUpdateUserResponse = zod.object({
@@ -132,7 +132,7 @@ export const TrackerUpdateUserResponse = zod.object({
   email: zod.string(),
   mobile: zod.string().nullish(),
   username: zod.string(),
-  role: zod.enum(["admin", "developer", "tester"]),
+  role: zod.enum(["admin", "manager", "developer", "tester"]),
   createdAt: zod.coerce.date(),
   passwordResetRequired: zod.boolean(),
 });

@@ -14,6 +14,7 @@ export type TrackerUserRole =
 
 export const TrackerUserRole = {
   admin: "admin",
+  manager: "manager",
   developer: "developer",
   tester: "tester",
 } as const;
@@ -49,6 +50,7 @@ export type CreateTrackerUserRole =
 
 export const CreateTrackerUserRole = {
   admin: "admin",
+  manager: "manager",
   developer: "developer",
   tester: "tester",
 } as const;
@@ -79,6 +81,7 @@ export type UpdateTrackerUserRole =
 
 export const UpdateTrackerUserRole = {
   admin: "admin",
+  manager: "manager",
   developer: "developer",
   tester: "tester",
 } as const;

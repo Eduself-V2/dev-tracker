@@ -11,7 +11,7 @@ export const trackerPool = mysql.createPool({
   decimalNumbers: true,
 });
 
-export type TrackerRole = "admin" | "developer" | "tester";
+export type TrackerRole = "admin" | "manager" | "developer" | "tester";
 
 export interface UserRow {
   id: number;

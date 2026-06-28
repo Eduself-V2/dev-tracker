@@ -122,7 +122,7 @@ export default function RequirementEdit() {
 
   const canEdit =
     user?.role === "admin" ||
-    (user?.role === "developer" && data?.requirement?.developerId === user?.id);
+    ((user?.role === "developer" || user?.role === "manager") && data?.requirement?.developerId === user?.id);
 
   if (isError || isNaN(reqId)) {
     return (

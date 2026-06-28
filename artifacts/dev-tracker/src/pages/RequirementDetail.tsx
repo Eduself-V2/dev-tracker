@@ -324,6 +324,23 @@ const getAllowedTransitions = (currentStatus: string, role: string): Transition[
     };
     return stateMap[currentStatus] ?? [];
   }
+  if (role === 'manager') {
+    const stateMap: Record<string, Transition[]> = {
+      open: [
+        { status: 'in_testing', label: 'Submit for Testing', icon: Play, variant: 'default' },
+      ],
+      in_testing: [
+        { status: 'confirmed', label: 'Confirm Fixes', icon: CheckCircle2, variant: 'default' },
+        { status: 'needs_fix', label: 'Needs Fix', icon: AlertCircle, variant: 'destructive' },
+      ],
+      needs_fix: [
+        { status: 'in_testing', label: 'Submit for Testing', icon: Play, variant: 'default' },
+      ],
+      confirmed: [],
+      pushed_to_production: [],
+    };
+    return stateMap[currentStatus] ?? [];
+  }
   if (role === 'developer') {
     if (currentStatus === 'open' || currentStatus === 'needs_fix') {
       return [{ status: 'in_testing', label: 'Submit for Testing', icon: Play, variant: 'default' }];
@@ -809,7 +826,7 @@ export default function RequirementDetail() {
             <Pin className="w-4 h-4" />
             {isPinned ? "Pinned" : "Pin"}
           </Button>
-          {(user?.role === "admin" || (user?.role === "developer" && requirement.developerId === user?.id)) && (
+          {(user?.role === "admin" || ((user?.role === "developer" || user?.role === "manager") && requirement.developerId === user?.id)) && (
             <Link href={`/requirements/${reqId}/edit`}>
               <Button variant="outline" size="sm" className="gap-2">
                 <Pencil className="w-4 h-4" />
@@ -1257,7 +1274,7 @@ export default function RequirementDetail() {
             </CardContent>
           </Card>
 
-          {user?.role === "admin" && (
+          {(user?.role === "admin" || user?.role === "manager") && (
             <Card className="shadow-sm border-amber-500/20 bg-amber-500/5">
               <CardHeader className="pb-3 border-b bg-background/50">
                 <CardTitle className="text-lg flex items-center gap-2">

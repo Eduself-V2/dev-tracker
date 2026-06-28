@@ -238,7 +238,7 @@ export default function RequirementsList() {
             {user?.role === "admin" ? "Track and manage all development requirements." : "View your assigned requirements."}
           </p>
         </div>
-        {(user?.role === "developer" || user?.role === "admin") && (
+        {(user?.role === "developer" || user?.role === "admin" || user?.role === "manager") && (
           <Link href="/requirements/new">
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -430,7 +430,7 @@ export default function RequirementsList() {
               <p className="text-sm text-muted-foreground max-w-sm mt-2">
                 Try adjusting your search or filters to find what you're looking for.
               </p>
-              {(user?.role === "developer" || user?.role === "admin") && (
+              {(user?.role === "developer" || user?.role === "admin" || user?.role === "manager") && (
                 <Link href="/requirements/new" className="mt-6">
                   <Button variant="outline">Create your first requirement</Button>
                 </Link>

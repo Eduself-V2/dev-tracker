@@ -11,7 +11,7 @@ CREATE TABLE users (
   mobile varchar(40) DEFAULT NULL,
   username varchar(60) NOT NULL,
   password_hash varchar(255) NOT NULL,
-  role enum('admin','developer','tester') NOT NULL,
+  role enum('admin','manager','developer','tester') NOT NULL,
   created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   password_reset_required tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),

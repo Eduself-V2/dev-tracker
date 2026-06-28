@@ -33,7 +33,7 @@ const userSchema = z.object({
   mobile: z.string().optional().nullable(),
   username: z.string().min(3, "Username must be at least 3 characters").max(60),
   password: z.string().optional(),
-  role: z.enum(["admin", "developer", "tester"] as const),
+  role: z.enum(["admin", "manager", "developer", "tester"] as const),
 });
 
 type UserFormValues = z.infer<typeof userSchema>;
@@ -183,6 +183,7 @@ export default function Users() {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "admin": return <Badge className="bg-primary hover:bg-primary/90">{role}</Badge>;
+      case "manager": return <Badge variant="secondary" className="bg-purple-500/10 text-purple-700 dark:text-purple-400 hover:bg-purple-500/20 border border-purple-500/20">{role}</Badge>;
       case "developer": return <Badge variant="secondary" className="bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20">{role}</Badge>;
       case "tester": return <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/20">{role}</Badge>;
       default: return <Badge variant="outline">{role}</Badge>;
@@ -310,6 +311,7 @@ export default function Users() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="admin">Administrator</SelectItem>
+                            <SelectItem value="manager">Manager</SelectItem>
                             <SelectItem value="developer">Developer</SelectItem>
                             <SelectItem value="tester">QA Tester</SelectItem>
                           </SelectContent>
@@ -413,7 +415,7 @@ export default function Users() {
                                   <FormItem><FormLabel>Password <span className="text-muted-foreground font-normal">(leave blank to keep)</span></FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
                                 )} />
                                 <FormField control={form.control} name="role" render={({ field }) => (
-                                  <FormItem><FormLabel>System Role</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger></FormControl><SelectContent><SelectItem value="admin">Administrator</SelectItem><SelectItem value="developer">Developer</SelectItem><SelectItem value="tester">QA Tester</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                                  <FormItem><FormLabel>System Role</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger></FormControl><SelectContent><SelectItem value="admin">Administrator</SelectItem><SelectItem value="manager">Manager</SelectItem><SelectItem value="developer">Developer</SelectItem><SelectItem value="tester">QA Tester</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                                 )} />
                               </div>
                               <DialogFooter className="pt-4">
