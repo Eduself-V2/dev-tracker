@@ -7,10 +7,21 @@ router.get("/summary", async (req, res, next) => {
   try {
     const me = req.trackerUser!;
     const projectId = req.query.projectId;
-    const mineFilter = me.role === "admin" ? "" : "assignee_id = ? AND ";
-    const mineValue = me.role === "admin" ? [] : [me.id];
     const projectFilter = projectId ? "project_id = ? AND " : "";
     const projectValues = projectId ? [projectId] : [];
+
+    let mineFilter: string;
+    let mineValue: unknown[];
+    if (me.role === "admin") {
+      mineFilter = "";
+      mineValue = [];
+    } else if (me.role === "manager" || me.role === "developer") {
+      mineFilter = "(developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = id AND ra_s.user_id = ?)) AND ";
+      mineValue = [me.id, me.id];
+    } else {
+      mineFilter = "EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = id AND ra_s.user_id = ?) AND ";
+      mineValue = [me.id];
+    }
     const whereValues = [...mineValue, ...projectValues];
 
     const [counts] = await trackerPool.query(
@@ -24,24 +35,32 @@ router.get("/summary", async (req, res, next) => {
     const total = Object.values(map).reduce((a, b) => a + b, 0);
 
     let myOpen = 0;
-    const myOpenMine = me.role === "admin" ? "" : "assignee_id = ? AND ";
-    const myOpenValues = me.role === "admin" ? projectValues : [me.id, ...projectValues];
-
     if (me.role === "admin") {
       myOpen = total - (map.pushed_to_production ?? 0);
     } else {
       const [r] = await trackerPool.query(
-        `SELECT COUNT(*) AS c FROM requirements WHERE ${myOpenMine}${projectFilter}status NOT IN ('pushed_to_production')`,
-        myOpenValues,
+        `SELECT COUNT(*) AS c FROM requirements WHERE ${mineFilter}${projectFilter}status NOT IN ('pushed_to_production')`,
+        whereValues,
       );
       myOpen = Number((r as Array<{ c: number }>)[0]?.c ?? 0);
     }
 
     const recentProject = projectId ? " AND r.project_id = ?" : "";
-    const recentMine = me.role === "admin" ? "" : " AND r.assignee_id = ?";
+    let recentMine: string;
+    let recentMineValues: unknown[];
+    if (me.role === "admin") {
+      recentMine = "";
+      recentMineValues = [];
+    } else if (me.role === "manager" || me.role === "developer") {
+      recentMine = " AND (r.developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_r WHERE ra_r.requirement_id = r.id AND ra_r.user_id = ?))";
+      recentMineValues = [me.id, me.id];
+    } else {
+      recentMine = " AND EXISTS (SELECT 1 FROM requirement_assignees ra_r WHERE ra_r.requirement_id = r.id AND ra_r.user_id = ?)";
+      recentMineValues = [me.id];
+    }
     const recentValues = [
       ...(projectId ? [projectId] : []),
-      ...(me.role === "admin" ? [] : [me.id]),
+      ...recentMineValues,
     ];
 
     const [recentRows] = await trackerPool.query(
