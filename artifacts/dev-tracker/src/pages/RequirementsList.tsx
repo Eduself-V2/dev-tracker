@@ -22,10 +22,11 @@ import { format } from "date-fns";
 import {
   Search, PlusCircle, AlertCircle, Circle, Clock, CheckCircle2,
   ArrowRightCircle, ListTodo, FolderKanban, User, ArrowUpDown,
-  CalendarDays, X, Pin,
+  CalendarDays, Pin,
 } from "lucide-react";
 import { TrackerListRequirementsStatus } from "@workspace/api-client-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DateRangeFilter, type DateRangePreset } from "@/components/DateRangeFilter";
 import {
   Dialog,
   DialogContent,
@@ -174,8 +175,10 @@ export default function RequirementsList() {
   const [assignedTo, setAssignedTo] = useState<number | undefined>(undefined);
   const [prioritySort, setPrioritySort] = useState<"none" | "high_first" | "low_first">("none");
   const [priorityFilter, setPriorityFilter] = useState<"all" | "high" | "medium" | "low">("all");
+  const [createdPreset, setCreatedPreset] = useState<DateRangePreset>("all");
   const [createdFrom, setCreatedFrom] = useState("");
   const [createdTo, setCreatedTo] = useState("");
+  const [updatedPreset, setUpdatedPreset] = useState<DateRangePreset>("all");
   const [updatedFrom, setUpdatedFrom] = useState("");
   const [updatedTo, setUpdatedTo] = useState("");
   const [pinDialog, setPinDialog] = useState<PinDialogState | null>(null);
@@ -391,27 +394,25 @@ export default function RequirementsList() {
           <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-border/40">
             <div className="flex items-center gap-2 flex-1">
               <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground shrink-0">Created</span>
-              <Input type="date" className="text-sm h-9" value={createdFrom} onChange={(e) => setCreatedFrom(e.target.value)} />
-              <span className="text-muted-foreground text-xs shrink-0">to</span>
-              <Input type="date" className="text-sm h-9" value={createdTo} onChange={(e) => setCreatedTo(e.target.value)} />
-              {(createdFrom || createdTo) && (
-                <button onClick={() => { setCreatedFrom(""); setCreatedTo(""); }} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
+              <DateRangeFilter
+                label="Created"
+                preset={createdPreset}
+                onPresetChange={setCreatedPreset}
+                from={createdFrom}
+                to={createdTo}
+                onChange={(from, to) => { setCreatedFrom(from); setCreatedTo(to); }}
+              />
             </div>
             <div className="flex items-center gap-2 flex-1">
               <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground shrink-0">Updated</span>
-              <Input type="date" className="text-sm h-9" value={updatedFrom} onChange={(e) => setUpdatedFrom(e.target.value)} />
-              <span className="text-muted-foreground text-xs shrink-0">to</span>
-              <Input type="date" className="text-sm h-9" value={updatedTo} onChange={(e) => setUpdatedTo(e.target.value)} />
-              {(updatedFrom || updatedTo) && (
-                <button onClick={() => { setUpdatedFrom(""); setUpdatedTo(""); }} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
+              <DateRangeFilter
+                label="Updated"
+                preset={updatedPreset}
+                onPresetChange={setUpdatedPreset}
+                from={updatedFrom}
+                to={updatedTo}
+                onChange={(from, to) => { setUpdatedFrom(from); setUpdatedTo(to); }}
+              />
             </div>
           </div>
         </CardContent>

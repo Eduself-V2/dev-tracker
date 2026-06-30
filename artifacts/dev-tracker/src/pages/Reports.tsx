@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { DateRangeFilter, getPresetRange, type DateRangePreset } from "@/components/DateRangeFilter";
 import {
   BarChart,
   Bar,
@@ -24,7 +24,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 import { BarChart2, MessageSquare, FolderKanban, UserCheck } from "lucide-react";
 
 type UserReport = {
@@ -80,11 +80,11 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
 
 export default function Reports() {
   const { user } = useAuth();
-  const today = format(new Date(), "yyyy-MM-dd");
-  const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
+  const defaultRange = getPresetRange("last7days");
 
-  const [startDate, setStartDate] = useState(thirtyDaysAgo);
-  const [endDate, setEndDate] = useState(today);
+  const [preset, setPreset] = useState<DateRangePreset>("last7days");
+  const [startDate, setStartDate] = useState(defaultRange.from);
+  const [endDate, setEndDate] = useState(defaultRange.to);
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
 
   const isAdmin = user?.role === "admin";
@@ -159,21 +159,14 @@ export default function Reports() {
         <CardContent className="pt-6">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-1.5">
-              <Label>Start Date</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-40"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>End Date</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-40"
+              <Label>Date Range</Label>
+              <DateRangeFilter
+                preset={preset}
+                onPresetChange={setPreset}
+                from={startDate}
+                to={endDate}
+                onChange={(from, to) => { setStartDate(from); setEndDate(to); }}
+                allowAllTime={false}
               />
             </div>
             {isAdmin && (
