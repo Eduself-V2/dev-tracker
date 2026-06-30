@@ -15,12 +15,9 @@ router.get("/summary", async (req, res, next) => {
     if (me.role === "admin") {
       mineFilter = "";
       mineValue = [];
-    } else if (me.role === "manager" || me.role === "developer") {
-      mineFilter = "(developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = id AND ra_s.user_id = ?)) AND ";
-      mineValue = [me.id, me.id];
     } else {
-      mineFilter = "EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = id AND ra_s.user_id = ?) AND ";
-      mineValue = [me.id];
+      mineFilter = "(developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = id AND ra_s.user_id = ?) OR EXISTS (SELECT 1 FROM requirement_testers rt_s WHERE rt_s.requirement_id = id AND rt_s.tester_id = ?)) AND ";
+      mineValue = [me.id, me.id, me.id];
     }
     const whereValues = [...mineValue, ...projectValues];
 
@@ -51,12 +48,9 @@ router.get("/summary", async (req, res, next) => {
     if (me.role === "admin") {
       recentMine = "";
       recentMineValues = [];
-    } else if (me.role === "manager" || me.role === "developer") {
-      recentMine = " AND (r.developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_r WHERE ra_r.requirement_id = r.id AND ra_r.user_id = ?))";
-      recentMineValues = [me.id, me.id];
     } else {
-      recentMine = " AND EXISTS (SELECT 1 FROM requirement_assignees ra_r WHERE ra_r.requirement_id = r.id AND ra_r.user_id = ?)";
-      recentMineValues = [me.id];
+      recentMine = " AND (r.developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_r WHERE ra_r.requirement_id = r.id AND ra_r.user_id = ?) OR EXISTS (SELECT 1 FROM requirement_testers rt_r WHERE rt_r.requirement_id = r.id AND rt_r.tester_id = ?))";
+      recentMineValues = [me.id, me.id, me.id];
     }
     const recentValues = [
       ...(projectId ? [projectId] : []),

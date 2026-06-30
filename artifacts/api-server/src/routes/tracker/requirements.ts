@@ -198,25 +198,14 @@ router.get("/", async (req, res, next) => {
         values.push(params.assignedTo);
       }
     }
-    if (params.mine) {
+    if (params.mine && req.trackerUser!.role === "admin") {
       const me = req.trackerUser!;
-      if (me.role === "manager" || me.role === "developer") {
-        conditions.push("(r.developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_f WHERE ra_f.requirement_id = r.id AND ra_f.user_id = ?))");
-        values.push(me.id, me.id);
-      } else {
-        conditions.push("EXISTS (SELECT 1 FROM requirement_assignees ra_f WHERE ra_f.requirement_id = r.id AND ra_f.user_id = ?)");
-        values.push(me.id);
-      }
-    }
-    if (!params.mine && req.trackerUser!.role !== "admin") {
+      conditions.push("EXISTS (SELECT 1 FROM requirement_assignees ra_f WHERE ra_f.requirement_id = r.id AND ra_f.user_id = ?)");
+      values.push(me.id);
+    } else if (params.mine || req.trackerUser!.role !== "admin") {
       const me = req.trackerUser!;
-      if (me.role === "manager" || me.role === "developer") {
-        conditions.push("(r.developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_f WHERE ra_f.requirement_id = r.id AND ra_f.user_id = ?))");
-        values.push(me.id, me.id);
-      } else {
-        conditions.push("EXISTS (SELECT 1 FROM requirement_assignees ra_f WHERE ra_f.requirement_id = r.id AND ra_f.user_id = ?)");
-        values.push(me.id);
-      }
+      conditions.push("(r.developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_f WHERE ra_f.requirement_id = r.id AND ra_f.user_id = ?) OR EXISTS (SELECT 1 FROM requirement_testers rt_f WHERE rt_f.requirement_id = r.id AND rt_f.tester_id = ?))");
+      values.push(me.id, me.id, me.id);
     }
     const where =
       conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
