@@ -11,6 +11,7 @@ export type UpdateTrackerUserRole =
 
 export const UpdateTrackerUserRole = {
   admin: "admin",
+  manager: "manager",
   developer: "developer",
   tester: "tester",
 } as const;

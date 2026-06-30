@@ -193,6 +193,7 @@ export const TrackerListRequirementsResponseItem = zod.object({
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   lastActivityAt: zod.coerce.date().optional(),
+  lastUpdatedByName: zod.string().nullish(),
 });
 export const TrackerListRequirementsResponse = zod.array(
   TrackerListRequirementsResponseItem,
@@ -211,8 +212,8 @@ export const TrackerCreateRequirementBody = zod.object({
   priority: zod
     .enum(["low", "medium", "high"])
     .default(trackerCreateRequirementBodyPriorityDefault),
-  testerId: zod.number().nullish(),
-  assigneeId: zod.number().nullish(),
+  testerIds: zod.array(zod.number()).optional(),
+  assigneeIds: zod.array(zod.number()).optional(),
   projectId: zod.number(),
 });
 
@@ -248,6 +249,7 @@ export const TrackerGetRequirementResponse = zod.object({
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
     lastActivityAt: zod.coerce.date().optional(),
+    lastUpdatedByName: zod.string().nullish(),
   }),
   events: zod.array(
     zod.object({
@@ -300,8 +302,8 @@ export const TrackerUpdateRequirementBody = zod.object({
     .optional(),
   description: zod.string().nullish(),
   priority: zod.enum(["low", "medium", "high"]).optional(),
-  testerId: zod.number().nullish(),
-  assigneeId: zod.number().nullish(),
+  testerIds: zod.array(zod.number()).optional(),
+  assigneeIds: zod.array(zod.number()).optional(),
   projectId: zod.number().optional(),
 });
 
@@ -329,6 +331,7 @@ export const TrackerUpdateRequirementResponse = zod.object({
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
   lastActivityAt: zod.coerce.date().optional(),
+  lastUpdatedByName: zod.string().nullish(),
 });
 
 /**
@@ -374,6 +377,7 @@ export const TrackerTransitionRequirementResponse = zod.object({
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
     lastActivityAt: zod.coerce.date().optional(),
+    lastUpdatedByName: zod.string().nullish(),
   }),
   events: zod.array(
     zod.object({
@@ -463,6 +467,7 @@ export const TrackerStatsSummaryResponse = zod.object({
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
       lastActivityAt: zod.coerce.date().optional(),
+      lastUpdatedByName: zod.string().nullish(),
     }),
   ),
 });

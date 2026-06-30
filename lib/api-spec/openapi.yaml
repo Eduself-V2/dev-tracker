@@ -443,7 +443,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, developer, tester]
+          enum: [admin, manager, developer, tester]
         createdAt:
           type: string
           format: date-time
@@ -491,7 +491,7 @@ components:
           maxLength: 200
         role:
           type: string
-          enum: [admin, developer, tester]
+          enum: [admin, manager, developer, tester]
       required: [name, email, username, password, role]
     UpdateTrackerUser:
       type: object
@@ -512,7 +512,7 @@ components:
           maxLength: 200
         role:
           type: string
-          enum: [admin, developer, tester]
+          enum: [admin, manager, developer, tester]
     Requirement:
       type: object
       properties:
@@ -560,6 +560,9 @@ components:
         lastActivityAt:
           type: string
           format: date-time
+        lastUpdatedByName:
+          type: string
+          nullable: true
       required: [id, title, status, priority, developerId, developerName, projectId, projectName, testCycles, createdAt, updatedAt]
     RequirementEvent:
       type: object
@@ -673,12 +676,14 @@ components:
           type: string
           enum: [low, medium, high]
           default: medium
-        testerId:
-          type: integer
-          nullable: true
-        assigneeId:
-          type: integer
-          nullable: true
+        testerIds:
+          type: array
+          items:
+            type: integer
+        assigneeIds:
+          type: array
+          items:
+            type: integer
         projectId:
           type: integer
       required: [title, projectId]
@@ -695,12 +700,14 @@ components:
         priority:
           type: string
           enum: [low, medium, high]
-        testerId:
-          type: integer
-          nullable: true
-        assigneeId:
-          type: integer
-          nullable: true
+        testerIds:
+          type: array
+          items:
+            type: integer
+        assigneeIds:
+          type: array
+          items:
+            type: integer
         projectId:
           type: integer
     TransitionRequirement:

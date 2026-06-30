@@ -11,6 +11,7 @@ export type CreateTrackerUserRole =
 
 export const CreateTrackerUserRole = {
   admin: "admin",
+  manager: "manager",
   developer: "developer",
   tester: "tester",
 } as const;
