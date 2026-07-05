@@ -465,6 +465,20 @@ export default function RequirementDetail() {
     },
   });
 
+  const pinCommentMutation = useTrackerPinComment({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) }),
+      onError: () => toast({ title: "Failed to pin comment", variant: "destructive" }),
+    },
+  });
+
+  const unpinCommentMutation = useTrackerUnpinComment({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) }),
+      onError: () => toast({ title: "Failed to unpin comment", variant: "destructive" }),
+    },
+  });
+
   if (isError || isNaN(reqId)) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -628,20 +642,6 @@ export default function RequirementDetail() {
       setDeleteCommentId(null);
     }
   };
-
-  const pinCommentMutation = useTrackerPinComment({
-    mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) }),
-      onError: () => toast({ title: "Failed to pin comment", variant: "destructive" }),
-    },
-  });
-
-  const unpinCommentMutation = useTrackerUnpinComment({
-    mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) }),
-      onError: () => toast({ title: "Failed to unpin comment", variant: "destructive" }),
-    },
-  });
 
   const toggleCommentPin = (comment: any) => {
     if (comment.isPinned) {
