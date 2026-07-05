@@ -420,7 +420,7 @@ export const TrackerAddCommentParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const trackerAddCommentBodyBodyMax = 2000;
+export const trackerAddCommentBodyBodyMax = 8000;
 
 export const TrackerAddCommentBody = zod.object({
   body: zod.string().min(1).max(trackerAddCommentBodyBodyMax),

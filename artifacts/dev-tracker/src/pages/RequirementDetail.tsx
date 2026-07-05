@@ -22,6 +22,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, isEditorContentEmpty } from "@/components/ui/rich-text-editor";
+import { RichTextContent } from "@/components/ui/rich-text-content";
+import { plainTextToHtml } from "@/lib/rich-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -501,14 +504,14 @@ export default function RequirementDetail() {
 
   const handlePostComment = () => {
     const hasAudio = commentFiles.some((f) => f.type.startsWith("audio/"));
-    const body = commentBody.trim() || (hasAudio ? "[Voice note]" : "");
+    const body = !isEditorContentEmpty(commentBody) ? commentBody : (hasAudio ? "[Voice note]" : "");
     if (!body) return;
     commentMutation.mutate({ id: reqId, data: { body } });
   };
 
   const handlePostReply = async (parentId: number) => {
     const hasAudio = replyFiles.some((f) => f.type.startsWith("audio/"));
-    const body = replyBody.trim() || (hasAudio ? "[Voice note]" : "");
+    const body = !isEditorContentEmpty(replyBody) ? replyBody : (hasAudio ? "[Voice note]" : "");
     if (!body) return;
     setPostingReply(true);
     try {
@@ -559,7 +562,7 @@ export default function RequirementDetail() {
 
   const startEdit = (comment: any) => {
     setEditingCommentId(comment.id);
-    setEditBody(comment.body);
+    setEditBody(plainTextToHtml(comment.body));
   };
 
   const cancelEdit = () => {
@@ -568,13 +571,13 @@ export default function RequirementDetail() {
   };
 
   const saveEdit = async (commentId: number) => {
-    if (!editBody.trim()) return;
+    if (isEditorContentEmpty(editBody)) return;
     try {
       const res = await fetch(`/api/tracker/requirements/${reqId}/comments/${commentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ body: editBody.trim() }),
+        body: JSON.stringify({ body: editBody }),
       });
       if (!res.ok) throw new Error("Failed to update comment");
       setEditingCommentId(null);
@@ -985,16 +988,17 @@ export default function RequirementDetail() {
                             </div>
                             {editingCommentId === comment.id ? (
                               <div className="space-y-2">
-                                <Textarea
+                                <RichTextEditor
                                   value={editBody}
-                                  onChange={(e) => setEditBody(e.target.value)}
-                                  className="min-h-[80px] text-sm bg-background"
+                                  onChange={setEditBody}
+                                  contentClassName="min-h-[60px] text-sm"
+                                  autoFocus
                                 />
                                 <div className="flex justify-end gap-2">
                                   <Button variant="ghost" size="sm" onClick={cancelEdit}>
                                     <X className="w-4 h-4 mr-1" /> Cancel
                                   </Button>
-                                  <Button size="sm" onClick={() => saveEdit(comment.id)} disabled={!editBody.trim()}>
+                                  <Button size="sm" onClick={() => saveEdit(comment.id)} disabled={isEditorContentEmpty(editBody)}>
                                     <Check className="w-4 h-4 mr-1" /> Save
                                   </Button>
                                 </div>
@@ -1002,7 +1006,7 @@ export default function RequirementDetail() {
                             ) : (
                               <div className="space-y-2">
                                 <div className="bg-muted/40 p-3 rounded-lg rounded-tl-none border border-border/50 text-sm">
-                                  <p className="whitespace-pre-wrap">{renderWithLinks(comment.body)}</p>
+                                  <RichTextContent html={comment.body} />
                                 </div>
                                 {cmtAttachments.length > 0 && (
                                   <AttachmentList attachments={cmtAttachments} reqId={reqId} onDeleted={handleAttachmentDeleted} />
@@ -1058,23 +1062,26 @@ export default function RequirementDetail() {
                                     </div>
                                     {editingCommentId === reply.id ? (
                                       <div className="p-2 space-y-2">
-                                        <Textarea
+                                        <RichTextEditor
                                           value={editBody}
-                                          onChange={(e) => setEditBody(e.target.value)}
-                                          className="min-h-[60px] text-sm bg-background"
+                                          onChange={setEditBody}
+                                          contentClassName="min-h-[50px] text-sm"
+                                          autoFocus
                                         />
                                         <div className="flex justify-end gap-2">
                                           <Button variant="ghost" size="sm" onClick={cancelEdit}>
                                             <X className="w-3.5 h-3.5 mr-1" /> Cancel
                                           </Button>
-                                          <Button size="sm" onClick={() => saveEdit(reply.id)} disabled={!editBody.trim()}>
+                                          <Button size="sm" onClick={() => saveEdit(reply.id)} disabled={isEditorContentEmpty(editBody)}>
                                             <Check className="w-3.5 h-3.5 mr-1" /> Save
                                           </Button>
                                         </div>
                                       </div>
                                     ) : (
                                       <div>
-                                        <p className="px-3 py-2 text-sm whitespace-pre-wrap">{renderWithLinks(reply.body)}</p>
+                                        <div className="px-3 py-2 text-sm">
+                                          <RichTextContent html={reply.body} />
+                                        </div>
                                         {replyAttachments.length > 0 && (
                                           <div className="px-3 pb-2">
                                             <AttachmentList attachments={replyAttachments} reqId={reqId} onDeleted={handleAttachmentDeleted} />
@@ -1095,11 +1102,11 @@ export default function RequirementDetail() {
                                   <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-semibold">{user?.name?.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 space-y-2">
-                                  <Textarea
+                                  <RichTextEditor
                                     placeholder={`Replying to ${comment.authorName}...`}
                                     value={replyBody}
-                                    onChange={(e) => setReplyBody(e.target.value)}
-                                    className="min-h-[70px] text-sm bg-background resize-none"
+                                    onChange={setReplyBody}
+                                    contentClassName="min-h-[50px] text-sm"
                                     autoFocus
                                   />
                                   <FileUploadZone files={replyFiles} onChange={setReplyFiles} compact />
@@ -1111,7 +1118,7 @@ export default function RequirementDetail() {
                                     <Button
                                       size="sm"
                                       onClick={() => handlePostReply(comment.id)}
-                                      disabled={(!replyBody.trim() && !replyFiles.some((f) => f.type.startsWith("audio/"))) || postingReply || uploadingReply}
+                                      disabled={(isEditorContentEmpty(replyBody) && !replyFiles.some((f) => f.type.startsWith("audio/"))) || postingReply || uploadingReply}
                                     >
                                       {postingReply ? (uploadingReply ? "Uploading..." : "Posting...") : "Post Reply"}
                                     </Button>
@@ -1134,18 +1141,18 @@ export default function RequirementDetail() {
                   <AvatarFallback className="bg-primary text-primary-foreground font-medium">{user?.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-3">
-                  <Textarea
+                  <RichTextEditor
                     placeholder="Add a comment..."
                     value={commentBody}
-                    onChange={(e) => setCommentBody(e.target.value)}
-                    className="min-h-[100px] resize-y bg-background"
+                    onChange={setCommentBody}
+                    contentClassName="min-h-[80px]"
                   />
                   <FileUploadZone files={commentFiles} onChange={setCommentFiles} compact />
                   <VoiceRecorder onRecorded={(file) => setCommentFiles((prev) => [...prev, file])} />
                   <div className="flex justify-end">
                     <Button
                       onClick={handlePostComment}
-                      disabled={(!commentBody.trim() && !commentFiles.some((f) => f.type.startsWith("audio/"))) || isCommentPosting}
+                      disabled={(isEditorContentEmpty(commentBody) && !commentFiles.some((f) => f.type.startsWith("audio/"))) || isCommentPosting}
                     >
                       {isCommentPosting ? (uploadingComment ? "Uploading..." : "Posting...") : "Post Comment"}
                     </Button>

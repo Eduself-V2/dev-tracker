@@ -272,7 +272,7 @@ export interface TransitionRequirement {
 export interface CreateComment {
   /**
    * @minLength 1
-   * @maxLength 2000
+   * @maxLength 8000
    */
   body: string;
   parentId?: number | null;

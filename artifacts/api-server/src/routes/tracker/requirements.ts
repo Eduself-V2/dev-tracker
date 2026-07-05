@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import sanitizeHtml from "sanitize-html";
 import {
   TrackerListRequirementsQueryParams,
   TrackerCreateRequirementBody,
@@ -22,6 +23,24 @@ import {
 import { sendEmail } from "../../lib/ses";
 import { deleteFromS3 } from "../../lib/s3";
 import { taskAssignedTemplate, testerAssignedTemplate, statusTransitionTemplate, adminAlertTemplate } from "../../lib/emailTemplates";
+
+// Comment bodies are authored as rich text (bold/italic/lists/links) by the Tiptap editor
+// on the frontend. Strip anything else server-side so a bypassed/hand-crafted client can't
+// store scripts or other unsafe markup that would later run when rendered back to other users.
+function sanitizeCommentBody(body: string): string {
+  return sanitizeHtml(body, {
+    allowedTags: ["p", "br", "strong", "b", "em", "i", "s", "strike", "ul", "ol", "li", "a"],
+    allowedAttributes: { a: ["href", "target", "rel"] },
+    allowedSchemes: ["http", "https", "mailto"],
+  }).trim();
+}
+
+function stripHtmlForPreview(body: string, maxLength: number): string {
+  const text = sanitizeHtml(body, { allowedTags: [], allowedAttributes: {} })
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.slice(0, maxLength);
+}
 
 async function getUserEmails(ids: number[]): Promise<Map<number, { name: string; email: string }>> {
   const unique = [...new Set(ids.filter(Boolean))];
@@ -861,6 +880,12 @@ router.post("/:id/comments", async (req, res, next) => {
     const me = req.trackerUser!;
     const parentId: number | null = body.parentId ?? null;
 
+    const sanitizedBody = sanitizeCommentBody(body.body);
+    if (!sanitizedBody) {
+      res.status(400).json({ error: "Comment body is required" });
+      return;
+    }
+
     const [existRows] = await trackerPool.query(
       "SELECT id FROM requirements WHERE id = ?",
       [id],
@@ -883,17 +908,18 @@ router.post("/:id/comments", async (req, res, next) => {
 
     const [insertResult] = await trackerPool.query(
       "INSERT INTO requirement_comments (requirement_id, body, author_id, parent_id) VALUES (?, ?, ?, ?)",
-      [id, body.body, me.id, parentId],
+      [id, sanitizedBody, me.id, parentId],
     );
+    const previewNote = stripHtmlForPreview(sanitizedBody, 280);
     if (parentId === null) {
       await trackerPool.query(
         "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'comment', ?, ?)",
-        [id, me.id, body.body.slice(0, 280)],
+        [id, me.id, previewNote],
       );
     } else {
       await trackerPool.query(
         "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'reply', ?, ?)",
-        [id, me.id, body.body.slice(0, 280)],
+        [id, me.id, previewNote],
       );
     }
     const insertId = (insertResult as { insertId: number }).insertId;
@@ -922,7 +948,12 @@ router.patch("/:id/comments/:commentId", async (req, res, next) => {
     }
 
     const { body: newBody } = req.body ?? {};
-    if (!newBody || typeof newBody !== "string" || newBody.trim().length === 0) {
+    if (!newBody || typeof newBody !== "string") {
+      res.status(400).json({ error: "Comment body is required" });
+      return;
+    }
+    const sanitizedBody = sanitizeCommentBody(newBody);
+    if (!sanitizedBody) {
       res.status(400).json({ error: "Comment body is required" });
       return;
     }
@@ -944,7 +975,7 @@ router.patch("/:id/comments/:commentId", async (req, res, next) => {
 
     await trackerPool.query(
       "UPDATE requirement_comments SET body = ? WHERE id = ?",
-      [newBody.trim(), commentId],
+      [sanitizedBody, commentId],
     );
 
     const [rows] = await trackerPool.query(
