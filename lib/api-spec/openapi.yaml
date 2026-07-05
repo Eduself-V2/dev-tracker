@@ -314,6 +314,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RequirementComment"
+  /tracker/requirements/{id}/comments/{commentId}/pin:
+    post:
+      operationId: trackerPinComment
+      tags: [tracker-requirements]
+      summary: Pin a comment in the requirement discussion
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: commentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Pinned comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequirementComment"
+    delete:
+      operationId: trackerUnpinComment
+      tags: [tracker-requirements]
+      summary: Unpin a comment in the requirement discussion
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: commentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Unpinned
   /tracker/stats/summary:
     get:
       operationId: trackerStatsSummary
@@ -609,10 +650,12 @@ components:
         parentId:
           type: integer
           nullable: true
+        isPinned:
+          type: boolean
         createdAt:
           type: string
           format: date-time
-      required: [id, requirementId, body, authorId, authorName, authorRole, createdAt]
+      required: [id, requirementId, body, authorId, authorName, authorRole, isPinned, createdAt]
     RequirementDetail:
       type: object
       properties:

@@ -83,6 +83,7 @@ export interface CommentRow {
   author_name: string;
   author_role: TrackerRole;
   parent_id: number | null;
+  is_pinned: number;
   created_at: Date;
 }
 

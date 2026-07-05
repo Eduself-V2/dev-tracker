@@ -24,10 +24,10 @@ import { sendEmail } from "../../lib/ses";
 import { deleteFromS3 } from "../../lib/s3";
 import { taskAssignedTemplate, testerAssignedTemplate, statusTransitionTemplate, adminAlertTemplate } from "../../lib/emailTemplates";
 
-// Comment bodies are authored as rich text (bold/italic/lists/links) by the Tiptap editor
-// on the frontend. Strip anything else server-side so a bypassed/hand-crafted client can't
-// store scripts or other unsafe markup that would later run when rendered back to other users.
-function sanitizeCommentBody(body: string): string {
+// Comment bodies and requirement descriptions are authored as rich text (bold/italic/lists/links)
+// by the Tiptap editor on the frontend. Strip anything else server-side so a bypassed/hand-crafted
+// client can't store scripts or other unsafe markup that would later run when rendered back to other users.
+function sanitizeRichText(body: string): string {
   return sanitizeHtml(body, {
     allowedTags: ["p", "br", "strong", "b", "em", "i", "s", "strike", "ul", "ol", "li", "a"],
     allowedAttributes: { a: ["href", "target", "rel"] },
@@ -140,6 +140,7 @@ function serializeComment(c: CommentRow) {
     authorName: c.author_name,
     authorRole: c.author_role,
     parentId: c.parent_id ?? null,
+    isPinned: !!c.is_pinned,
     createdAt: c.created_at.toISOString(),
   };
 }
@@ -273,11 +274,13 @@ router.post("/", async (req, res, next) => {
       }
     }
 
+    const sanitizedDescription = body.description ? sanitizeRichText(body.description) : null;
+
     const [insertResult] = await trackerPool.query(
       "INSERT INTO requirements (title, description, priority, developer_id, assignee_id, project_id) VALUES (?, ?, ?, ?, ?, ?)",
       [
         body.title,
-        body.description ?? null,
+        sanitizedDescription || null,
         body.priority ?? "medium",
         me.id,
         assigneeIds[0],
@@ -357,7 +360,7 @@ router.get("/:id", async (req, res, next) => {
       [id],
     );
     const [crows] = await trackerPool.query(
-      `SELECT c.id, c.requirement_id, c.body, c.author_id, c.parent_id, c.created_at,
+      `SELECT c.id, c.requirement_id, c.body, c.author_id, c.parent_id, c.is_pinned, c.created_at,
               u.name AS author_name, u.role AS author_role
        FROM requirement_comments c
        JOIN users u ON u.id = c.author_id
@@ -419,7 +422,7 @@ router.patch("/:id", async (req, res, next) => {
     }
     if (body.description !== undefined) {
       fields.push("description = ?");
-      values.push(body.description ?? null);
+      values.push(body.description ? sanitizeRichText(body.description) || null : null);
     }
     if (body.priority !== undefined) {
       fields.push("priority = ?");
@@ -880,7 +883,7 @@ router.post("/:id/comments", async (req, res, next) => {
     const me = req.trackerUser!;
     const parentId: number | null = body.parentId ?? null;
 
-    const sanitizedBody = sanitizeCommentBody(body.body);
+    const sanitizedBody = sanitizeRichText(body.body);
     if (!sanitizedBody) {
       res.status(400).json({ error: "Comment body is required" });
       return;
@@ -924,7 +927,7 @@ router.post("/:id/comments", async (req, res, next) => {
     }
     const insertId = (insertResult as { insertId: number }).insertId;
     const [rows] = await trackerPool.query(
-      `SELECT c.id, c.requirement_id, c.body, c.author_id, c.parent_id, c.created_at,
+      `SELECT c.id, c.requirement_id, c.body, c.author_id, c.parent_id, c.is_pinned, c.created_at,
               u.name AS author_name, u.role AS author_role
        FROM requirement_comments c JOIN users u ON u.id = c.author_id
        WHERE c.id = ?`,
@@ -952,7 +955,7 @@ router.patch("/:id/comments/:commentId", async (req, res, next) => {
       res.status(400).json({ error: "Comment body is required" });
       return;
     }
-    const sanitizedBody = sanitizeCommentBody(newBody);
+    const sanitizedBody = sanitizeRichText(newBody);
     if (!sanitizedBody) {
       res.status(400).json({ error: "Comment body is required" });
       return;
@@ -979,13 +982,87 @@ router.patch("/:id/comments/:commentId", async (req, res, next) => {
     );
 
     const [rows] = await trackerPool.query(
-      `SELECT c.id, c.requirement_id, c.body, c.author_id, c.parent_id, c.created_at,
+      `SELECT c.id, c.requirement_id, c.body, c.author_id, c.parent_id, c.is_pinned, c.created_at,
               u.name AS author_name, u.role AS author_role
        FROM requirement_comments c JOIN users u ON u.id = c.author_id
        WHERE c.id = ?`,
       [commentId],
     );
     res.json(serializeComment((rows as CommentRow[])[0]));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/:id/comments/:commentId/pin", async (req, res, next) => {
+  try {
+    const reqId = parseInt(String(req.params.id));
+    const commentId = parseInt(String(req.params.commentId));
+    const me = req.trackerUser!;
+
+    if (isNaN(reqId) || isNaN(commentId)) {
+      res.status(400).json({ error: "Invalid IDs" });
+      return;
+    }
+
+    const [crows] = await trackerPool.query(
+      "SELECT * FROM requirement_comments WHERE id = ? AND requirement_id = ?",
+      [commentId, reqId],
+    );
+    const comment = (crows as CommentRow[])[0];
+    if (!comment) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    if (me.role !== "admin" && comment.author_id !== me.id) {
+      res.status(403).json({ error: "You can only pin your own comments" });
+      return;
+    }
+
+    await trackerPool.query("UPDATE requirement_comments SET is_pinned = 1 WHERE id = ?", [commentId]);
+
+    const [rows] = await trackerPool.query(
+      `SELECT c.id, c.requirement_id, c.body, c.author_id, c.parent_id, c.is_pinned, c.created_at,
+              u.name AS author_name, u.role AS author_role
+       FROM requirement_comments c JOIN users u ON u.id = c.author_id
+       WHERE c.id = ?`,
+      [commentId],
+    );
+    res.json(serializeComment((rows as CommentRow[])[0]));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/:id/comments/:commentId/pin", async (req, res, next) => {
+  try {
+    const reqId = parseInt(String(req.params.id));
+    const commentId = parseInt(String(req.params.commentId));
+    const me = req.trackerUser!;
+
+    if (isNaN(reqId) || isNaN(commentId)) {
+      res.status(400).json({ error: "Invalid IDs" });
+      return;
+    }
+
+    const [crows] = await trackerPool.query(
+      "SELECT * FROM requirement_comments WHERE id = ? AND requirement_id = ?",
+      [commentId, reqId],
+    );
+    const comment = (crows as CommentRow[])[0];
+    if (!comment) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    if (me.role !== "admin" && comment.author_id !== me.id) {
+      res.status(403).json({ error: "You can only unpin your own comments" });
+      return;
+    }
+
+    await trackerPool.query("UPDATE requirement_comments SET is_pinned = 0 WHERE id = ?", [commentId]);
+    res.status(204).end();
   } catch (err) {
     next(err);
   }

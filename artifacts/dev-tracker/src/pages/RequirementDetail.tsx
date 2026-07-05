@@ -14,6 +14,8 @@ import {
   useTrackerPinTask,
   useTrackerUnpinTask,
   getTrackerListPinsQueryKey,
+  useTrackerPinComment,
+  useTrackerUnpinComment,
 } from "@workspace/api-client-react";
 import type { TransitionRequirementToStatus } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -497,6 +499,7 @@ export default function RequirementDetail() {
   );
   const reqAttachments = allAttachments.filter((a) => a.commentId === null);
   const allowedTransitions = getAllowedTransitions(requirement.status, user?.role || "");
+  const pinnedComments = comments.filter((c: any) => c.isPinned);
 
   const handleTransition = (status: TransitionRequirementToStatus) => {
     transitionMutation.mutate({ id: reqId, data: { toStatus: status, note: transitionNote || undefined } });
@@ -623,6 +626,28 @@ export default function RequirementDetail() {
     } finally {
       setDeletingComment(false);
       setDeleteCommentId(null);
+    }
+  };
+
+  const pinCommentMutation = useTrackerPinComment({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) }),
+      onError: () => toast({ title: "Failed to pin comment", variant: "destructive" }),
+    },
+  });
+
+  const unpinCommentMutation = useTrackerUnpinComment({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) }),
+      onError: () => toast({ title: "Failed to unpin comment", variant: "destructive" }),
+    },
+  });
+
+  const toggleCommentPin = (comment: any) => {
+    if (comment.isPinned) {
+      unpinCommentMutation.mutate({ id: reqId, commentId: comment.id });
+    } else {
+      pinCommentMutation.mutate({ id: reqId, commentId: comment.id });
     }
   };
 
@@ -912,8 +937,8 @@ export default function RequirementDetail() {
               <CardTitle className="text-lg">Description</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
-              {requirement.description ? (
-                <p className="whitespace-pre-wrap text-foreground/90 leading-relaxed">{renderWithLinks(requirement.description)}</p>
+              {requirement.description && !isEditorContentEmpty(requirement.description) ? (
+                <RichTextContent html={requirement.description} className="text-foreground/90 leading-relaxed" />
               ) : (
                 <p className="text-muted-foreground italic">No description provided.</p>
               )}
@@ -940,6 +965,44 @@ export default function RequirementDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
+              {pinnedComments.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Pin className="w-3.5 h-3.5 fill-current text-amber-600 dark:text-amber-500" />
+                    Pinned
+                  </div>
+                  <div className="space-y-2">
+                    {pinnedComments.map((pc: any) => (
+                      <div
+                        key={pc.id}
+                        className="flex items-start justify-between gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-lg px-3 py-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="font-semibold text-xs">{pc.authorName}</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatDistanceToNow(new Date(pc.createdAt), { addSuffix: true })}
+                            </span>
+                          </div>
+                          <div className="text-sm line-clamp-2">
+                            <RichTextContent html={pc.body} />
+                          </div>
+                        </div>
+                        {canEditComment(pc) && (
+                          <button
+                            onClick={() => toggleCommentPin(pc)}
+                            className="p-1 rounded hover:bg-amber-200/40 dark:hover:bg-amber-900/40 transition-colors shrink-0"
+                            title="Unpin"
+                          >
+                            <Pin className="w-3.5 h-3.5 fill-current text-amber-600 dark:text-amber-500" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <Separator />
+                </div>
+              )}
               {comments.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-20" />
@@ -961,6 +1024,11 @@ export default function RequirementDetail() {
                               <div className="flex items-center gap-2">
                                 <span className="font-semibold text-sm">{comment.authorName}</span>
                                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{comment.authorRole}</Badge>
+                                {comment.isPinned && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 border-amber-300 text-amber-700 dark:text-amber-500">
+                                    <Pin className="w-2.5 h-2.5 fill-current" /> Pinned
+                                  </Badge>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-xs text-muted-foreground">
@@ -968,6 +1036,13 @@ export default function RequirementDetail() {
                                 </span>
                                 {canEditComment(comment) && (
                                   <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => toggleCommentPin(comment)}
+                                      className="p-1 rounded hover:bg-muted transition-colors"
+                                      title={comment.isPinned ? "Unpin" : "Pin"}
+                                    >
+                                      <Pin className={`w-3.5 h-3.5 ${comment.isPinned ? "fill-current text-amber-600 dark:text-amber-500" : "text-muted-foreground"}`} />
+                                    </button>
                                     <button
                                       onClick={() => startEdit(comment)}
                                       className="p-1 rounded hover:bg-muted transition-colors"
@@ -1043,6 +1118,11 @@ export default function RequirementDetail() {
                                         <CornerDownRight className="w-3 h-3 text-primary/50 shrink-0" />
                                         <span className="font-semibold text-xs">{reply.authorName}</span>
                                         <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5">{reply.authorRole}</Badge>
+                                        {reply.isPinned && (
+                                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 border-amber-300 text-amber-700 dark:text-amber-500">
+                                            <Pin className="w-2 h-2 fill-current" /> Pinned
+                                          </Badge>
+                                        )}
                                       </div>
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-[10px] text-muted-foreground">
@@ -1050,6 +1130,9 @@ export default function RequirementDetail() {
                                         </span>
                                         {canEditComment(reply) && (
                                           <>
+                                            <button onClick={() => toggleCommentPin(reply)} className="p-0.5 rounded hover:bg-muted transition-colors" title={reply.isPinned ? "Unpin" : "Pin"}>
+                                              <Pin className={`w-3 h-3 ${reply.isPinned ? "fill-current text-amber-600 dark:text-amber-500" : "text-muted-foreground"}`} />
+                                            </button>
                                             <button onClick={() => startEdit(reply)} className="p-0.5 rounded hover:bg-muted transition-colors" title="Edit">
                                               <Pencil className="w-3 h-3 text-muted-foreground" />
                                             </button>

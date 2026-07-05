@@ -175,6 +175,7 @@ export interface RequirementComment {
   authorName: string;
   authorRole: string;
   parentId?: number | null;
+  isPinned: boolean;
   createdAt: string;
 }
 

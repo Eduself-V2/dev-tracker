@@ -280,6 +280,7 @@ export const TrackerGetRequirementResponse = zod.object({
       authorName: zod.string(),
       authorRole: zod.string(),
       parentId: zod.number().nullish(),
+      isPinned: zod.boolean(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -408,6 +409,7 @@ export const TrackerTransitionRequirementResponse = zod.object({
       authorName: zod.string(),
       authorRole: zod.string(),
       parentId: zod.number().nullish(),
+      isPinned: zod.boolean(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -425,6 +427,34 @@ export const trackerAddCommentBodyBodyMax = 8000;
 export const TrackerAddCommentBody = zod.object({
   body: zod.string().min(1).max(trackerAddCommentBodyBodyMax),
   parentId: zod.number().nullish(),
+});
+
+/**
+ * @summary Pin a comment in the requirement discussion
+ */
+export const TrackerPinCommentParams = zod.object({
+  id: zod.coerce.number(),
+  commentId: zod.coerce.number(),
+});
+
+export const TrackerPinCommentResponse = zod.object({
+  id: zod.number(),
+  requirementId: zod.number(),
+  body: zod.string(),
+  authorId: zod.number(),
+  authorName: zod.string(),
+  authorRole: zod.string(),
+  parentId: zod.number().nullish(),
+  isPinned: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Unpin a comment in the requirement discussion
+ */
+export const TrackerUnpinCommentParams = zod.object({
+  id: zod.coerce.number(),
+  commentId: zod.coerce.number(),
 });
 
 /**

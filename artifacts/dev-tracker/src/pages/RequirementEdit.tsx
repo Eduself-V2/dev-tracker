@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, isEditorContentEmpty } from "@/components/ui/rich-text-editor";
+import { plainTextToHtml } from "@/lib/rich-text";
 import {
   Form,
   FormControl,
@@ -111,7 +112,7 @@ export default function RequirementEdit() {
       const r = data.requirement;
       form.reset({
         title: r.title,
-        description: r.description ?? "",
+        description: r.description ? plainTextToHtml(r.description) : "",
         priority: r.priority as "low" | "medium" | "high",
         testerIds: r.testerIds ?? [],
         assigneeIds: r.assigneeIds ?? [],
@@ -163,7 +164,7 @@ export default function RequirementEdit() {
       id: reqId,
       data: {
         title: values.title,
-        description: values.description,
+        description: values.description && !isEditorContentEmpty(values.description) ? values.description : undefined,
         priority: values.priority,
         testerIds: values.testerIds ?? [],
         assigneeIds: values.assigneeIds ?? [],
@@ -211,10 +212,11 @@ export default function RequirementEdit() {
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea
+                      <RichTextEditor
                         placeholder="Provide details, acceptance criteria, etc."
-                        className="min-h-[120px] resize-y"
-                        {...field}
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        contentClassName="min-h-[120px]"
                       />
                     </FormControl>
                     <FormMessage />

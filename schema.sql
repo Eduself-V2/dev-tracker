@@ -74,6 +74,7 @@ CREATE TABLE requirement_comments (
   body text NOT NULL,
   author_id int NOT NULL,
   parent_id int NULL DEFAULT NULL,
+  is_pinned tinyint(1) NOT NULL DEFAULT 0,
   created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_cmt_req (requirement_id),

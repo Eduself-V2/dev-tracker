@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, isEditorContentEmpty } from "@/components/ui/rich-text-editor";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -124,7 +124,7 @@ export default function RequirementCreate() {
     createMutation.mutate({
       data: {
         title: data.title,
-        description: data.description,
+        description: data.description && !isEditorContentEmpty(data.description) ? data.description : undefined,
         priority: data.priority as CreateRequirementPriority,
         testerIds: data.testerIds?.length ? data.testerIds : undefined,
         assigneeIds: data.assigneeIds?.length ? data.assigneeIds : undefined,
@@ -173,10 +173,11 @@ export default function RequirementCreate() {
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea
+                      <RichTextEditor
                         placeholder="Provide details, acceptance criteria, etc."
-                        className="min-h-[120px] resize-y"
-                        {...field}
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        contentClassName="min-h-[120px]"
                       />
                     </FormControl>
                     <FormMessage />

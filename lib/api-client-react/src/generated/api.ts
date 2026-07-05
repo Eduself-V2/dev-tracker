@@ -1312,6 +1312,179 @@ export const useTrackerAddComment = <
 };
 
 /**
+ * @summary Pin a comment in the requirement discussion
+ */
+export const getTrackerPinCommentUrl = (id: number, commentId: number) => {
+  return `/api/tracker/requirements/${id}/comments/${commentId}/pin`;
+};
+
+export const trackerPinComment = async (
+  id: number,
+  commentId: number,
+  options?: RequestInit,
+): Promise<RequirementComment> => {
+  return customFetch<RequirementComment>(
+    getTrackerPinCommentUrl(id, commentId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getTrackerPinCommentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerPinComment>>,
+    TError,
+    { id: number; commentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerPinComment>>,
+  TError,
+  { id: number; commentId: number },
+  TContext
+> => {
+  const mutationKey = ["trackerPinComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerPinComment>>,
+    { id: number; commentId: number }
+  > = (props) => {
+    const { id, commentId } = props ?? {};
+
+    return trackerPinComment(id, commentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerPinCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerPinComment>>
+>;
+
+export type TrackerPinCommentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Pin a comment in the requirement discussion
+ */
+export const useTrackerPinComment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerPinComment>>,
+    TError,
+    { id: number; commentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerPinComment>>,
+  TError,
+  { id: number; commentId: number },
+  TContext
+> => {
+  return useMutation(getTrackerPinCommentMutationOptions(options));
+};
+
+/**
+ * @summary Unpin a comment in the requirement discussion
+ */
+export const getTrackerUnpinCommentUrl = (id: number, commentId: number) => {
+  return `/api/tracker/requirements/${id}/comments/${commentId}/pin`;
+};
+
+export const trackerUnpinComment = async (
+  id: number,
+  commentId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getTrackerUnpinCommentUrl(id, commentId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getTrackerUnpinCommentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerUnpinComment>>,
+    TError,
+    { id: number; commentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerUnpinComment>>,
+  TError,
+  { id: number; commentId: number },
+  TContext
+> => {
+  const mutationKey = ["trackerUnpinComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerUnpinComment>>,
+    { id: number; commentId: number }
+  > = (props) => {
+    const { id, commentId } = props ?? {};
+
+    return trackerUnpinComment(id, commentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerUnpinCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerUnpinComment>>
+>;
+
+export type TrackerUnpinCommentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Unpin a comment in the requirement discussion
+ */
+export const useTrackerUnpinComment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerUnpinComment>>,
+    TError,
+    { id: number; commentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerUnpinComment>>,
+  TError,
+  { id: number; commentId: number },
+  TContext
+> => {
+  return useMutation(getTrackerUnpinCommentMutationOptions(options));
+};
+
+/**
  * @summary Tracker dashboard summary
  */
 export const getTrackerStatsSummaryUrl = (
