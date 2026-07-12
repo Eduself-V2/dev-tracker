@@ -407,6 +407,8 @@ export default function RequirementDetail() {
   const [delegating, setDelegating] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [pinSelectedMinutes, setPinSelectedMinutes] = useState<number | null>(null);
+  const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
+  const highlightTimeoutRef = useRef<number | null>(null);
 
   const { data: pins } = useTrackerListPins();
   const pinMutation = useTrackerPinTask();
@@ -649,6 +651,15 @@ export default function RequirementDetail() {
     } else {
       pinCommentMutation.mutate({ id: reqId, commentId: comment.id });
     }
+  };
+
+  const scrollToComment = (commentId: number) => {
+    const el = document.getElementById(`comment-${commentId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedCommentId(commentId);
+    if (highlightTimeoutRef.current) window.clearTimeout(highlightTimeoutRef.current);
+    highlightTimeoutRef.current = window.setTimeout(() => setHighlightedCommentId(null), 2000);
   };
 
   const handleAttachmentDeleted = (attachmentId: number) => {
@@ -975,7 +986,11 @@ export default function RequirementDetail() {
                     {pinnedComments.map((pc: any) => (
                       <div
                         key={pc.id}
-                        className="flex items-start justify-between gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-lg px-3 py-2"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => scrollToComment(pc.id)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); scrollToComment(pc.id); } }}
+                        className="flex items-start justify-between gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-lg px-3 py-2 cursor-pointer hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-colors"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 mb-0.5">
@@ -990,7 +1005,7 @@ export default function RequirementDetail() {
                         </div>
                         {canEditComment(pc) && (
                           <button
-                            onClick={() => toggleCommentPin(pc)}
+                            onClick={(e) => { e.stopPropagation(); toggleCommentPin(pc); }}
                             className="p-1 rounded hover:bg-amber-200/40 dark:hover:bg-amber-900/40 transition-colors shrink-0"
                             title="Unpin"
                           >
@@ -1015,7 +1030,10 @@ export default function RequirementDetail() {
                     const replies = comments.filter((c) => c.parentId === comment.id);
                     return (
                       <div key={comment.id}>
-                        <div className="flex gap-4">
+                        <div
+                          id={`comment-${comment.id}`}
+                          className={`flex gap-4 rounded-lg transition-shadow duration-500 ${highlightedCommentId === comment.id ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-background" : ""}`}
+                        >
                           <Avatar className="w-10 h-10 border shadow-sm shrink-0">
                             <AvatarFallback className="bg-primary/5 text-primary font-medium">{comment.authorName.charAt(0)}</AvatarFallback>
                           </Avatar>
@@ -1107,7 +1125,11 @@ export default function RequirementDetail() {
                             {replies.map((reply) => {
                               const replyAttachments = allAttachments.filter((a) => a.commentId === reply.id);
                               return (
-                              <div key={reply.id} className="flex gap-3">
+                              <div
+                                key={reply.id}
+                                id={`comment-${reply.id}`}
+                                className={`flex gap-3 rounded-lg transition-shadow duration-500 ${highlightedCommentId === reply.id ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-background" : ""}`}
+                              >
                                 <Avatar className="w-7 h-7 border shadow-sm shrink-0 mt-0.5">
                                   <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">{reply.authorName.charAt(0)}</AvatarFallback>
                                 </Avatar>

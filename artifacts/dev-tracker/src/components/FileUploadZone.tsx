@@ -1,16 +1,17 @@
 import { useRef, useState } from "react";
-import { Paperclip, X, FileText, FileSpreadsheet, Image, Upload, Mic } from "lucide-react";
+import { Paperclip, X, FileText, FileSpreadsheet, FileArchive, Image, Upload, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const ACCEPTED = ".jpg,.jpeg,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv";
+const ACCEPTED = ".jpg,.jpeg,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv,.zip";
 const ACCEPTED_MIME = new Set([
   "image/jpeg", "image/png", "image/gif", "image/webp",
   "application/pdf",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "text/csv", "application/csv",
+  "application/zip", "application/x-zip-compressed", "application/x-zip",
 ]);
-const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 
 interface Props {
   files: File[];
@@ -23,6 +24,7 @@ function fileIcon(type: string) {
   if (type.startsWith("image/")) return <Image className="w-4 h-4 text-blue-500" />;
   if (type === "application/pdf") return <FileText className="w-4 h-4 text-red-500" />;
   if (type.startsWith("audio/")) return <Mic className="w-4 h-4 text-violet-500" />;
+  if (type.includes("zip")) return <FileArchive className="w-4 h-4 text-amber-600" />;
   return <FileSpreadsheet className="w-4 h-4 text-green-600" />;
 }
 
@@ -43,11 +45,11 @@ export default function FileUploadZone({ files, onChange, maxFiles = 5, compact 
     const valid: File[] = [];
     for (const f of Array.from(incoming)) {
       if (!ACCEPTED_MIME.has(f.type)) {
-        setError(`"${f.name}" is not allowed. Use images, PDF, Excel, or CSV.`);
+        setError(`"${f.name}" is not allowed. Use images, PDF, Excel, CSV, or ZIP.`);
         continue;
       }
       if (f.size > MAX_SIZE) {
-        setError(`"${f.name}" exceeds the 10 MB limit.`);
+        setError(`"${f.name}" exceeds the 50 MB limit.`);
         continue;
       }
       valid.push(f);
@@ -76,7 +78,7 @@ export default function FileUploadZone({ files, onChange, maxFiles = 5, compact 
           {compact ? "Attach files" : "Drop files here or click to browse"}
         </span>
         <span className="ml-auto text-[11px] text-muted-foreground/60">
-          Images, PDF, Excel, CSV · max 10 MB each
+          Images, PDF, Excel, CSV, ZIP · max 50 MB each
         </span>
       </div>
 

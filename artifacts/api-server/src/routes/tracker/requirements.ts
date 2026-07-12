@@ -29,7 +29,7 @@ import { taskAssignedTemplate, testerAssignedTemplate, statusTransitionTemplate,
 // client can't store scripts or other unsafe markup that would later run when rendered back to other users.
 function sanitizeRichText(body: string): string {
   return sanitizeHtml(body, {
-    allowedTags: ["p", "br", "strong", "b", "em", "i", "s", "strike", "ul", "ol", "li", "a"],
+    allowedTags: ["p", "br", "strong", "b", "em", "i", "s", "strike", "ul", "ol", "li", "a", "h1", "h2", "h3"],
     allowedAttributes: { a: ["href", "target", "rel"] },
     allowedSchemes: ["http", "https", "mailto"],
   }).trim();

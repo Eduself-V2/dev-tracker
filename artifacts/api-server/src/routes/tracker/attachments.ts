@@ -21,17 +21,20 @@ const ALLOWED_MIME_TYPES = new Set([
   "audio/mp4",
   "audio/wav",
   "audio/x-m4a",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/x-zip",
 ]);
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024, files: 5 },
+  limits: { fileSize: 50 * 1024 * 1024, files: 5 },
   fileFilter: (_req, file, cb) => {
     const baseType = file.mimetype.split(";")[0];
     if (ALLOWED_MIME_TYPES.has(baseType)) {
       cb(null, true);
     } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: images, PDF, Excel, CSV, audio`));
+      cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: images, PDF, Excel, CSV, ZIP, audio`));
     }
   },
 });

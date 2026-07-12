@@ -2,7 +2,7 @@ import * as React from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Bold, Italic, Strikethrough, List, ListOrdered } from "lucide-react";
+import { Bold, Italic, Strikethrough, List, ListOrdered, Heading1, Heading2, Heading3 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Toggle } from "@/components/ui/toggle";
@@ -22,6 +22,9 @@ function RichTextToolbar({ editor }: { editor: Editor | null }) {
         strike: ctx.editor.isActive("strike"),
         bulletList: ctx.editor.isActive("bulletList"),
         orderedList: ctx.editor.isActive("orderedList"),
+        heading1: ctx.editor.isActive("heading", { level: 1 }),
+        heading2: ctx.editor.isActive("heading", { level: 2 }),
+        heading3: ctx.editor.isActive("heading", { level: 3 }),
       };
     },
   });
@@ -30,6 +33,34 @@ function RichTextToolbar({ editor }: { editor: Editor | null }) {
 
   return (
     <div className="flex items-center gap-0.5 border-b border-border/60 px-1 py-1">
+      <Toggle
+        size="sm"
+        pressed={state.heading1}
+        onPressedChange={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        aria-label="Heading 1"
+        title="Heading 1"
+      >
+        <Heading1 className="w-3.5 h-3.5" />
+      </Toggle>
+      <Toggle
+        size="sm"
+        pressed={state.heading2}
+        onPressedChange={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        aria-label="Heading 2"
+        title="Heading 2"
+      >
+        <Heading2 className="w-3.5 h-3.5" />
+      </Toggle>
+      <Toggle
+        size="sm"
+        pressed={state.heading3}
+        onPressedChange={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        aria-label="Heading 3"
+        title="Heading 3"
+      >
+        <Heading3 className="w-3.5 h-3.5" />
+      </Toggle>
+      <div className="w-px h-4 bg-border mx-1" />
       <Toggle
         size="sm"
         pressed={state.bold}
@@ -101,7 +132,7 @@ export function RichTextEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
-        heading: false,
+        heading: { levels: [1, 2, 3] },
         codeBlock: false,
         blockquote: false,
         horizontalRule: false,
@@ -125,7 +156,7 @@ export function RichTextEditor({
       attributes: {
         class: cn(
           "prose prose-sm dark:prose-invert max-w-none focus:outline-none",
-          "prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0",
+          "prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:mt-2 prose-headings:mb-1",
           contentClassName,
         ),
       },
