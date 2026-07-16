@@ -23,7 +23,6 @@ export * from "./requirementPriority";
 export * from "./requirementStatus";
 export * from "./resetTrackerPassword";
 export * from "./trackerListRequirementsParams";
-export * from "./trackerListRequirementsStatus";
 export * from "./trackerLogin";
 export * from "./trackerStatsSummary";
 export * from "./trackerStatsSummaryParams";

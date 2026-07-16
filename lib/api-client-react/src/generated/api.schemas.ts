@@ -291,26 +291,20 @@ export interface TrackerStatsSummary {
 }
 
 export type TrackerListRequirementsParams = {
-  status?: TrackerListRequirementsStatus;
+  /**
+   * Comma-separated status values (open, in_testing, needs_fix, confirmed, pushed_to_production). Omit for all statuses.
+   */
+  status?: string;
   search?: string;
   mine?: boolean;
-  projectId?: number;
+  /**
+   * Comma-separated project IDs. Omit for all projects.
+   */
+  projectId?: string;
   createdBy?: number;
   testedBy?: number;
   assignedTo?: number;
 };
-
-export type TrackerListRequirementsStatus =
-  (typeof TrackerListRequirementsStatus)[keyof typeof TrackerListRequirementsStatus];
-
-export const TrackerListRequirementsStatus = {
-  all: "all",
-  open: "open",
-  in_testing: "in_testing",
-  needs_fix: "needs_fix",
-  confirmed: "confirmed",
-  pushed_to_production: "pushed_to_production",
-} as const;
 
 export type TrackerStatsSummaryParams = {
   projectId?: number;

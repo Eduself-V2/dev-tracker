@@ -5,13 +5,18 @@
  * Dev Tracker API
  * OpenAPI spec version: 0.1.0
  */
-import type { TrackerListRequirementsStatus } from "./trackerListRequirementsStatus";
 
 export type TrackerListRequirementsParams = {
-  status?: TrackerListRequirementsStatus;
+  /**
+   * Comma-separated status values (open, in_testing, needs_fix, confirmed, pushed_to_production). Omit for all statuses.
+   */
+  status?: string;
   search?: string;
   mine?: boolean;
-  projectId?: number;
+  /**
+   * Comma-separated project IDs. Omit for all projects.
+   */
+  projectId?: string;
   createdBy?: number;
   testedBy?: number;
   assignedTo?: number;

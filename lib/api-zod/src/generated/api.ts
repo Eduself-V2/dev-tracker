@@ -147,23 +147,21 @@ export const TrackerDeleteUserParams = zod.object({
 /**
  * @summary List requirements (filtered by status, search, assignee)
  */
-export const trackerListRequirementsQueryStatusDefault = `all`;
 export const trackerListRequirementsQueryMineDefault = false;
 
 export const TrackerListRequirementsQueryParams = zod.object({
-  status: zod
-    .enum([
-      "all",
-      "open",
-      "in_testing",
-      "needs_fix",
-      "confirmed",
-      "pushed_to_production",
-    ])
-    .default(trackerListRequirementsQueryStatusDefault),
+  status: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Comma-separated status values (open, in_testing, needs_fix, confirmed, pushed_to_production). Omit for all statuses.",
+    ),
   search: zod.coerce.string().optional(),
   mine: zod.coerce.boolean().default(trackerListRequirementsQueryMineDefault),
-  projectId: zod.coerce.number().optional(),
+  projectId: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated project IDs. Omit for all projects."),
   createdBy: zod.coerce.number().optional(),
   testedBy: zod.coerce.number().optional(),
   assignedTo: zod.coerce.number().optional(),

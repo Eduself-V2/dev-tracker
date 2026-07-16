@@ -186,12 +186,25 @@ router.get("/", async (req, res, next) => {
     const values: unknown[] = [];
 
     if (params.projectId) {
-      conditions.push("r.project_id = ?");
-      values.push(params.projectId);
+      const projectIds = params.projectId
+        .split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n));
+      if (projectIds.length > 0) {
+        conditions.push(`r.project_id IN (${projectIds.map(() => "?").join(",")})`);
+        values.push(...projectIds);
+      }
     }
-    if (params.status && params.status !== "all") {
-      conditions.push("r.status = ?");
-      values.push(params.status);
+    if (params.status) {
+      const validStatuses = Object.keys(ALLOWED_TRANSITIONS.admin) as Status[];
+      const statuses = params.status
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s): s is Status => (validStatuses as string[]).includes(s));
+      if (statuses.length > 0) {
+        conditions.push(`r.status IN (${statuses.map(() => "?").join(",")})`);
+        values.push(...statuses);
+      }
     }
     if (params.search && params.search.trim().length > 0) {
       conditions.push("(r.title LIKE ? OR r.description LIKE ?)");

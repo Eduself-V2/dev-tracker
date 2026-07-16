@@ -24,8 +24,14 @@ import {
   ArrowRightCircle, ListTodo, FolderKanban, User, ArrowUpDown,
   CalendarDays, Pin,
 } from "lucide-react";
-import { TrackerListRequirementsStatus } from "@workspace/api-client-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DateRangeFilter, type DateRangePreset } from "@/components/DateRangeFilter";
 import {
   Dialog,
@@ -64,14 +70,14 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-function getInitialProjectId(): number | undefined {
+function getInitialProjectIds(): number[] {
   const params = new URLSearchParams(window.location.search);
   const val = params.get("project");
-  if (val) {
-    const n = parseInt(val);
-    return isNaN(n) ? undefined : n;
-  }
-  return undefined;
+  if (!val) return [];
+  return val
+    .split(",")
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => !isNaN(n));
 }
 
 type PinDialogState = {
@@ -167,9 +173,9 @@ export default function RequirementsList() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
-  const [status, setStatus] = useState<TrackerListRequirementsStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [mine, setMine] = useState(false);
-  const [projectId, setProjectId] = useState<number | undefined>(getInitialProjectId());
+  const [projectIds, setProjectIds] = useState<number[]>(getInitialProjectIds());
   const [createdBy, setCreatedBy] = useState<number | undefined>(undefined);
   const [testedBy, setTestedBy] = useState<number | undefined>(undefined);
   const [assignedTo, setAssignedTo] = useState<number | undefined>(undefined);
@@ -194,9 +200,9 @@ export default function RequirementsList() {
 
   const { data: requirements, isLoading } = useTrackerListRequirements({
     search: debouncedSearch || undefined,
-    status: status !== "all" ? status : undefined,
+    status: statusFilter.length > 0 ? statusFilter.join(",") : undefined,
     mine: mine ? true : undefined,
-    projectId: projectId,
+    projectId: projectIds.length > 0 ? projectIds.join(",") : undefined,
     createdBy,
     testedBy,
     assignedTo,
@@ -274,20 +280,40 @@ export default function RequirementsList() {
 
             <div className="flex items-center space-x-2 min-w-[200px]">
               <FolderKanban className="h-4 w-4 text-muted-foreground shrink-0" />
-              <Select
-                value={projectId?.toString() || "all"}
-                onValueChange={(val) => setProjectId(val === "all" ? undefined : parseInt(val))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All projects" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All projects</SelectItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start font-normal">
+                    {projectIds.length === 0
+                      ? "All projects"
+                      : projectIds.length === 1
+                        ? (Array.isArray(projects) ? projects : []).find((p) => p.id === projectIds[0])?.name ?? "1 project"
+                        : `${projectIds.length} projects`}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuCheckboxItem
+                    checked={projectIds.length === 0}
+                    onCheckedChange={() => setProjectIds([])}
+                  >
+                    All projects
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
                   {(Array.isArray(projects) ? projects : []).map((p) => (
-                    <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                    <DropdownMenuCheckboxItem
+                      key={p.id}
+                      checked={projectIds.includes(p.id)}
+                      onCheckedChange={(checked) =>
+                        setProjectIds((prev) =>
+                          checked ? [...prev, p.id] : prev.filter((id) => id !== p.id),
+                        )
+                      }
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {p.name}
+                    </DropdownMenuCheckboxItem>
                   ))}
-                </SelectContent>
-              </Select>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <div className="flex items-center space-x-2 min-w-[180px]">
@@ -327,7 +353,7 @@ export default function RequirementsList() {
 
           <div className="flex flex-wrap gap-2">
             {stageConfigs.map((config) => {
-              const isSelected = status === config.key;
+              const isSelected = config.key === "all" ? statusFilter.length === 0 : statusFilter.includes(config.key);
               return (
                 <Badge
                   key={config.key}
@@ -335,7 +361,17 @@ export default function RequirementsList() {
                   className={`cursor-pointer px-3 py-1.5 transition-colors text-sm font-medium hover:bg-primary/90 hover:text-primary-foreground ${
                     !isSelected ? "bg-background text-foreground hover:bg-muted" : ""
                   }`}
-                  onClick={() => setStatus(config.key as TrackerListRequirementsStatus)}
+                  onClick={() => {
+                    if (config.key === "all") {
+                      setStatusFilter([]);
+                      return;
+                    }
+                    setStatusFilter((prev) =>
+                      prev.includes(config.key)
+                        ? prev.filter((s) => s !== config.key)
+                        : [...prev, config.key],
+                    );
+                  }}
                 >
                   <config.icon className="w-3 h-3 mr-1.5" />
                   {config.label}
