@@ -418,6 +418,11 @@ export default function RequirementsList() {
         </CardContent>
       </Card>
 
+      <p className="text-sm text-muted-foreground px-1">
+        Showing <span className="font-medium text-foreground">{sortedRequirements.length}</span>{" "}
+        requirement{sortedRequirements.length === 1 ? "" : "s"}
+      </p>
+
       <div className="space-y-4">
         {isLoading ? (
           [...Array(3)].map((_, i) => (

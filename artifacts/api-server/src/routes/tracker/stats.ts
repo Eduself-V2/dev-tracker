@@ -36,21 +36,19 @@ router.get("/summary", async (req, res, next) => {
     }
     const total = Object.values(map).reduce((a, b) => a + b, 0);
 
-    let myOpen = 0;
-    if (me.role === "admin") {
-      myOpen = total - (map.pushed_to_production ?? 0);
-    } else {
-      // "My Open Assigned" stays personal: requirements where I'm the
-      // developer, an assignee, or a tester (not just anything in my projects).
-      const assignedFilter =
-        "(developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = id AND ra_s.user_id = ?) OR EXISTS (SELECT 1 FROM requirement_testers rt_s WHERE rt_s.requirement_id = id AND rt_s.tester_id = ?)) AND ";
-      const assignedValues = [me.id, me.id, me.id, ...projectValues];
-      const [r] = await trackerPool.query(
-        `SELECT COUNT(*) AS c FROM requirements WHERE ${assignedFilter}${projectFilter}status NOT IN ('pushed_to_production')`,
-        assignedValues,
-      );
-      myOpen = Number((r as Array<{ c: number }>)[0]?.c ?? 0);
-    }
+    // "My Open Assigned" is always personal, for every role including admin:
+    // requirements I'm currently assigned to (requirement_assignees membership
+    // only — not developer_id, which is the permanent creator and never
+    // reflects reassignment, and not testers). This matches the "Assigned to
+    // me" filter on the Requirements list.
+    const assignedFilter =
+      "EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = id AND ra_s.user_id = ?) AND ";
+    const assignedValues = [me.id, ...projectValues];
+    const [myOpenRows] = await trackerPool.query(
+      `SELECT COUNT(*) AS c FROM requirements WHERE ${assignedFilter}${projectFilter}status NOT IN ('pushed_to_production')`,
+      assignedValues,
+    );
+    const myOpen = Number((myOpenRows as Array<{ c: number }>)[0]?.c ?? 0);
 
     const recentProject = projectId ? " AND r.project_id = ?" : "";
     let recentScope: string;
