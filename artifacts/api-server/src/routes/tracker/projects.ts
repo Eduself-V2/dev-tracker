@@ -31,9 +31,11 @@ router.get("/", async (req, res, next) => {
       `SELECT DISTINCT p.id, p.name, p.description, p.created_at
        FROM projects p
        JOIN requirements r ON r.project_id = p.id
-       WHERE r.assignee_id = ?
+       WHERE r.developer_id = ?
+          OR EXISTS (SELECT 1 FROM requirement_assignees ra WHERE ra.requirement_id = r.id AND ra.user_id = ?)
+          OR EXISTS (SELECT 1 FROM requirement_testers rt WHERE rt.requirement_id = r.id AND rt.tester_id = ?)
        ORDER BY p.created_at DESC`,
-      [me.id],
+      [me.id, me.id, me.id],
     );
     res.json((rows as ProjectRow[]).map(serialize));
   } catch (err) {

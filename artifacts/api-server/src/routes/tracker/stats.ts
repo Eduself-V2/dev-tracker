@@ -10,19 +10,24 @@ router.get("/summary", async (req, res, next) => {
     const projectFilter = projectId ? "project_id = ? AND " : "";
     const projectValues = projectId ? [projectId] : [];
 
-    let mineFilter: string;
-    let mineValue: unknown[];
+    // Projects the user is involved in: any project containing a requirement
+    // where they are the developer, an assignee, or a tester.
+    const PROJECT_SCOPE_SUBQUERY =
+      "SELECT DISTINCT r2.project_id FROM requirements r2 WHERE r2.developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra2 WHERE ra2.requirement_id = r2.id AND ra2.user_id = ?) OR EXISTS (SELECT 1 FROM requirement_testers rt2 WHERE rt2.requirement_id = r2.id AND rt2.tester_id = ?)";
+
+    let scopeFilter: string;
+    let scopeValue: unknown[];
     if (me.role === "admin") {
-      mineFilter = "";
-      mineValue = [];
+      scopeFilter = "";
+      scopeValue = [];
     } else {
-      mineFilter = "(developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = id AND ra_s.user_id = ?) OR EXISTS (SELECT 1 FROM requirement_testers rt_s WHERE rt_s.requirement_id = id AND rt_s.tester_id = ?)) AND ";
-      mineValue = [me.id, me.id, me.id];
+      scopeFilter = `project_id IN (${PROJECT_SCOPE_SUBQUERY}) AND `;
+      scopeValue = [me.id, me.id, me.id];
     }
-    const whereValues = [...mineValue, ...projectValues];
+    const whereValues = [...scopeValue, ...projectValues];
 
     const [counts] = await trackerPool.query(
-      `SELECT status, COUNT(*) AS c FROM requirements WHERE ${mineFilter}${projectFilter}1=1 GROUP BY status`,
+      `SELECT status, COUNT(*) AS c FROM requirements WHERE ${scopeFilter}${projectFilter}1=1 GROUP BY status`,
       whereValues,
     );
     const map: Record<string, number> = {};
@@ -35,26 +40,31 @@ router.get("/summary", async (req, res, next) => {
     if (me.role === "admin") {
       myOpen = total - (map.pushed_to_production ?? 0);
     } else {
+      // "My Open Assigned" stays personal: requirements where I'm the
+      // developer, an assignee, or a tester (not just anything in my projects).
+      const assignedFilter =
+        "(developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = id AND ra_s.user_id = ?) OR EXISTS (SELECT 1 FROM requirement_testers rt_s WHERE rt_s.requirement_id = id AND rt_s.tester_id = ?)) AND ";
+      const assignedValues = [me.id, me.id, me.id, ...projectValues];
       const [r] = await trackerPool.query(
-        `SELECT COUNT(*) AS c FROM requirements WHERE ${mineFilter}${projectFilter}status NOT IN ('pushed_to_production')`,
-        whereValues,
+        `SELECT COUNT(*) AS c FROM requirements WHERE ${assignedFilter}${projectFilter}status NOT IN ('pushed_to_production')`,
+        assignedValues,
       );
       myOpen = Number((r as Array<{ c: number }>)[0]?.c ?? 0);
     }
 
     const recentProject = projectId ? " AND r.project_id = ?" : "";
-    let recentMine: string;
-    let recentMineValues: unknown[];
+    let recentScope: string;
+    let recentScopeValues: unknown[];
     if (me.role === "admin") {
-      recentMine = "";
-      recentMineValues = [];
+      recentScope = "";
+      recentScopeValues = [];
     } else {
-      recentMine = " AND (r.developer_id = ? OR EXISTS (SELECT 1 FROM requirement_assignees ra_r WHERE ra_r.requirement_id = r.id AND ra_r.user_id = ?) OR EXISTS (SELECT 1 FROM requirement_testers rt_r WHERE rt_r.requirement_id = r.id AND rt_r.tester_id = ?))";
-      recentMineValues = [me.id, me.id, me.id];
+      recentScope = ` AND r.project_id IN (${PROJECT_SCOPE_SUBQUERY})`;
+      recentScopeValues = [me.id, me.id, me.id];
     }
     const recentValues = [
       ...(projectId ? [projectId] : []),
-      ...recentMineValues,
+      ...recentScopeValues,
     ];
 
     const [recentRows] = await trackerPool.query(
@@ -76,7 +86,7 @@ router.get("/summary", async (req, res, next) => {
        LEFT JOIN users a ON a.id = r.assignee_id
        JOIN projects p ON p.id = r.project_id
        LEFT JOIN requirement_events e ON e.requirement_id = r.id
-       WHERE 1=1${recentProject}${recentMine}
+       WHERE 1=1${recentProject}${recentScope}
        GROUP BY r.id
        ORDER BY last_activity_at DESC
        LIMIT 8`,
