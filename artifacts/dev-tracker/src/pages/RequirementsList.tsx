@@ -381,7 +381,7 @@ export default function RequirementsList() {
           </div>
 
           {user?.role === "admin" && (
-            <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-border/40">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 pt-2 border-t border-border/40">
               <div className="flex items-center gap-2 min-w-[180px]">
                 <User className="h-4 w-4 text-muted-foreground shrink-0" />
                 <Select value={createdBy?.toString() || "all"} onValueChange={(val) => setCreatedBy(val === "all" ? undefined : parseInt(val))}>

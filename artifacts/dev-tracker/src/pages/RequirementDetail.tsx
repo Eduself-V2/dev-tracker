@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -381,6 +381,19 @@ export default function RequirementDetail() {
       queryKey: getTrackerGetRequirementQueryKey(reqId),
     },
   });
+
+  useEffect(() => {
+    const defaultTitle = document.title;
+    return () => {
+      document.title = defaultTitle;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (data?.requirement?.title) {
+      document.title = `${data.requirement.title} | Dev Tracker`;
+    }
+  }, [data?.requirement?.title]);
 
   const [commentBody, setCommentBody] = useState("");
   const [commentFiles, setCommentFiles] = useState<File[]>([]);
@@ -976,7 +989,7 @@ export default function RequirementDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
-              <div className="max-h-[600px] overflow-y-auto pr-2 -mr-2 space-y-6">
+              <div className="max-h-[600px] overflow-y-auto scrollbar-thin pr-2 -mr-2 space-y-6">
               {pinnedComments.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -1039,8 +1052,8 @@ export default function RequirementDetail() {
                             <AvatarFallback className="bg-primary/5 text-primary font-medium">{comment.authorName.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-between flex-wrap gap-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold text-sm">{comment.authorName}</span>
                                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{comment.authorRole}</Badge>
                                 {comment.isPinned && (
@@ -1136,8 +1149,8 @@ export default function RequirementDetail() {
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
                                   <div className="bg-muted/50 rounded-lg rounded-tl-none border border-border/40 overflow-hidden">
-                                    <div className="flex items-center justify-between px-3 py-1.5 bg-muted/60 border-b border-border/30">
-                                      <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center justify-between flex-wrap gap-y-1 px-3 py-1.5 bg-muted/60 border-b border-border/30">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
                                         <CornerDownRight className="w-3 h-3 text-primary/50 shrink-0" />
                                         <span className="font-semibold text-xs">{reply.authorName}</span>
                                         <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5">{reply.authorRole}</Badge>
@@ -1373,7 +1386,7 @@ export default function RequirementDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="max-h-[600px] overflow-y-auto pr-2 -mr-2">
+              <div className="max-h-[600px] overflow-y-auto scrollbar-thin pr-2 -mr-2">
                 {events.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground">
                     <Activity className="w-10 h-10 mx-auto mb-3 opacity-20" />

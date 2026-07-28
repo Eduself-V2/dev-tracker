@@ -279,9 +279,9 @@ export default function Dashboard() {
               <div className="space-y-4">
                 {recentItems.map((req) => (
                   <Link key={req.id} href={`/requirements/${req.id}`}>
-                    <div className="flex items-center justify-between p-4 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer group">
-                      <div className="flex flex-col gap-1">
-                        <span className="font-semibold text-base group-hover:text-primary transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer group">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="font-semibold text-base group-hover:text-primary transition-colors truncate">
                           {req.title}
                         </span>
                         <span className="text-sm text-muted-foreground">
@@ -291,7 +291,7 @@ export default function Dashboard() {
                           )}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                         <Badge variant="outline" className="capitalize">
                           {req.status.replace(/_/g, " ")}
                         </Badge>

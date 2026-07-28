@@ -121,7 +121,7 @@ function ReferenceRow({
       {/* Visibility badge + actions */}
       <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
         {isAdmin && <VisibilityBadge mode={item.visibilityMode} />}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy} title="Copy value">
             {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
           </Button>
@@ -397,12 +397,12 @@ function ProjectReferencesCard({
     <>
       <Card className="shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <FolderKanban className="w-4 h-4 text-primary" />
               </div>
-              <CardTitle className="text-base">{project.name}</CardTitle>
+              <CardTitle className="text-base truncate">{project.name}</CardTitle>
             </div>
             {isAdmin && (
               <Button variant="outline" size="sm" onClick={() => { resetForm(); setAddOpen(true); }}>
