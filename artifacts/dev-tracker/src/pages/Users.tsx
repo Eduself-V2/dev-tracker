@@ -213,7 +213,7 @@ export default function Users() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="name"
@@ -245,7 +245,7 @@ export default function Users() {
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="email"
@@ -280,7 +280,7 @@ export default function Users() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="password"
@@ -335,6 +335,7 @@ export default function Users() {
       </div>
 
       <Card className="border-border/50 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
@@ -394,7 +395,7 @@ export default function Users() {
                           </DialogHeader>
                           <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="name" render={({ field }) => (
                                   <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                                 )} />
@@ -402,7 +403,7 @@ export default function Users() {
                                   <FormItem><FormLabel>Username</FormLabel><FormControl><Input {...field} disabled className="bg-muted" /></FormControl><FormMessage /></FormItem>
                                 )} />
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="email" render={({ field }) => (
                                   <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
                                 )} />
@@ -410,7 +411,7 @@ export default function Users() {
                                   <FormItem><FormLabel>Mobile (Optional)</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>
                                 )} />
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="password" render={({ field }) => (
                                   <FormItem><FormLabel>Password <span className="text-muted-foreground font-normal">(leave blank to keep)</span></FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
                                 )} />
@@ -458,6 +459,7 @@ export default function Users() {
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
     </div>
   );

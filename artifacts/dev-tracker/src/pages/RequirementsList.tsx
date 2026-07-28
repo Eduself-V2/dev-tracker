@@ -259,7 +259,7 @@ export default function RequirementsList() {
 
       <Card className="border-border/50 shadow-sm">
         <CardContent className="p-4 flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 items-start sm:items-center justify-between">
             <div className="relative w-full sm:max-w-xs">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input

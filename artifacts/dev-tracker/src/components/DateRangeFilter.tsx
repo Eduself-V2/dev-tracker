@@ -101,7 +101,7 @@ export function DateRangeFilter({
     <div className={`flex items-center gap-2 flex-wrap ${className ?? ""}`}>
       {label && <span className="text-sm text-muted-foreground shrink-0">{label}</span>}
       <Select value={preset} onValueChange={handlePresetSelect}>
-        <SelectTrigger className="w-[150px] h-9 text-sm">
+        <SelectTrigger className="w-full sm:w-[150px] h-9 text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -118,14 +118,14 @@ export function DateRangeFilter({
         <>
           <Input
             type="date"
-            className="text-sm h-9 w-[150px]"
+            className="text-sm h-9 w-full sm:w-[150px]"
             value={from}
             onChange={(e) => onChange(e.target.value, to)}
           />
           <span className="text-muted-foreground text-xs shrink-0">to</span>
           <Input
             type="date"
-            className="text-sm h-9 w-[150px]"
+            className="text-sm h-9 w-full sm:w-[150px]"
             value={to}
             onChange={(e) => onChange(from, e.target.value)}
           />

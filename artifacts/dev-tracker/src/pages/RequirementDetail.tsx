@@ -830,14 +830,14 @@ export default function RequirementDetail() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <Link href="/requirements">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <Badge variant={requirement.priority === 'high' ? 'destructive' : requirement.priority === 'medium' ? 'default' : 'secondary'}>
               {requirement.priority === 'high' ? '🔴 High Priority' : requirement.priority === 'medium' ? '🟡 Medium Priority' : '🟢 Low Priority'}
             </Badge>
@@ -852,7 +852,7 @@ export default function RequirementDetail() {
             </Badge>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant={isPinned ? "default" : "outline"}
             size="sm"
@@ -976,6 +976,7 @@ export default function RequirementDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
+              <div className="max-h-[600px] overflow-y-auto pr-2 -mr-2 space-y-6">
               {pinnedComments.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -1238,6 +1239,7 @@ export default function RequirementDetail() {
                   })}
                 </div>
               )}
+              </div>
 
               <Separator />
 
@@ -1371,18 +1373,20 @@ export default function RequirementDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              {events.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  <Activity className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                  <p>No activity yet.</p>
-                </div>
-              ) : (
-                <TimelineView
-                  events={events}
-                  expanded={timelineExpanded}
-                  onToggle={() => setTimelineExpanded(!timelineExpanded)}
-                />
-              )}
+              <div className="max-h-[600px] overflow-y-auto pr-2 -mr-2">
+                {events.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Activity className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                    <p>No activity yet.</p>
+                  </div>
+                ) : (
+                  <TimelineView
+                    events={events}
+                    expanded={timelineExpanded}
+                    onToggle={() => setTimelineExpanded(!timelineExpanded)}
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
 
