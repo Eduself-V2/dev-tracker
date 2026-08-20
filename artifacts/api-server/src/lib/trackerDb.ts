@@ -8,6 +8,7 @@ export const trackerPool = mysql.createPool({
   database: process.env.TRACKER_MYSQL_DATABASE ?? "dev_tracker",
   connectionLimit: 10,
   dateStrings: false,
+  timezone: "Z",
   decimalNumbers: true,
 });
 
