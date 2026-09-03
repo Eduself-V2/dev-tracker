@@ -414,6 +414,40 @@ export const TrackerTransitionRequirementResponse = zod.object({
 });
 
 /**
+ * @summary Revert the most recent status transition (original actor or admin only, within the undo window)
+ */
+export const TrackerUndoTransitionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const TrackerUndoTransitionResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.enum([
+    "open",
+    "in_testing",
+    "needs_fix",
+    "confirmed",
+    "pushed_to_production",
+  ]),
+  priority: zod.enum(["low", "medium", "high"]),
+  developerId: zod.number(),
+  developerName: zod.string(),
+  testerId: zod.number().nullish(),
+  testerName: zod.string().nullish(),
+  assigneeId: zod.number().nullish(),
+  assigneeName: zod.string().nullish(),
+  projectId: zod.number(),
+  projectName: zod.string(),
+  testCycles: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  lastActivityAt: zod.coerce.date().optional(),
+  lastUpdatedByName: zod.string().nullish(),
+});
+
+/**
  * @summary Add a comment to a requirement
  */
 export const TrackerAddCommentParams = zod.object({

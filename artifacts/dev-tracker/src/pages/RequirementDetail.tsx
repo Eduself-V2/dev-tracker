@@ -5,6 +5,7 @@ import {
   useTrackerGetRequirement,
   getTrackerGetRequirementQueryKey,
   useTrackerTransitionRequirement,
+  useTrackerUndoTransition,
   useTrackerAddComment,
   useTrackerListUsers,
   getTrackerListRequirementsQueryKey,
@@ -74,6 +75,7 @@ import {
   Pin,
   Timer,
   Search,
+  Undo2,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -81,6 +83,8 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { format, formatDistanceToNow, isSameDay } from "date-fns";
+
+const UNDO_TRANSITION_WINDOW_MS = 15 * 60 * 1000;
 
 function renderWithLinks(text: string) {
   const parts = text.split(/(https?:\/\/[^\s<>"]+)/g);
@@ -483,6 +487,23 @@ export default function RequirementDetail() {
     },
   });
 
+  const undoMutation = useTrackerUndoTransition({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) });
+        queryClient.invalidateQueries({ queryKey: getTrackerListRequirementsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getTrackerStatsSummaryQueryKey() });
+        toast({ title: "Status change undone" });
+      },
+      onError: (err: any) =>
+        toast({ title: err?.data?.error ?? "Failed to undo status change", variant: "destructive" }),
+    },
+  });
+
+  const handleUndo = () => {
+    undoMutation.mutate({ id: reqId });
+  };
+
   const pinCommentMutation = useTrackerPinComment({
     mutation: {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) }),
@@ -532,6 +553,12 @@ export default function RequirementDetail() {
   const reqAttachments = allAttachments.filter((a) => a.commentId === null);
   const allowedTransitions = getAllowedTransitions(requirement.status, user?.role || "");
   const pinnedComments = comments.filter((c: any) => c.isPinned);
+
+  const lastTransitionEvent = [...events].reverse().find((e: any) => e.kind === "transitioned" && e.fromStatus);
+  const canUndoTransition =
+    !!lastTransitionEvent &&
+    (user?.id === lastTransitionEvent.actorId || user?.role === "admin") &&
+    Date.now() - new Date(lastTransitionEvent.createdAt).getTime() < UNDO_TRANSITION_WINDOW_MS;
 
   const commentSearchQuery = commentSearch.trim().toLowerCase();
   const commentMatchesSearch = (c: any) =>
@@ -1311,33 +1338,51 @@ export default function RequirementDetail() {
         </div>
 
         <div className="space-y-6">
-          {allowedTransitions.length > 0 && (
+          {(allowedTransitions.length > 0 || canUndoTransition) && (
             <Card className="border-primary/20 shadow-md bg-primary/5 overflow-hidden">
               <CardHeader className="pb-3 border-b bg-background/50">
                 <CardTitle className="text-lg">Update Status</CardTitle>
                 <CardDescription>Move this requirement to the next stage.</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 space-y-4">
-                <Textarea
-                  placeholder="Optional note for this transition..."
-                  value={transitionNote}
-                  onChange={(e) => setTransitionNote(e.target.value)}
-                  className="text-sm min-h-[80px] bg-background"
-                />
-                <div className="space-y-2">
-                  {allowedTransitions.map((t) => (
+                {allowedTransitions.length > 0 && (
+                  <>
+                    <Textarea
+                      placeholder="Optional note for this transition..."
+                      value={transitionNote}
+                      onChange={(e) => setTransitionNote(e.target.value)}
+                      className="text-sm min-h-[80px] bg-background"
+                    />
+                    <div className="space-y-2">
+                      {allowedTransitions.map((t) => (
+                        <Button
+                          key={t.status}
+                          variant={t.variant}
+                          className="w-full justify-start"
+                          onClick={() => handleTransition(t.status)}
+                          disabled={transitionMutation.isPending}
+                        >
+                          <t.icon className="w-4 h-4 mr-2" />
+                          {t.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {canUndoTransition && (
+                  <>
+                    {allowedTransitions.length > 0 && <Separator />}
                     <Button
-                      key={t.status}
-                      variant={t.variant}
+                      variant="outline"
                       className="w-full justify-start"
-                      onClick={() => handleTransition(t.status)}
-                      disabled={transitionMutation.isPending}
+                      onClick={handleUndo}
+                      disabled={undoMutation.isPending}
                     >
-                      <t.icon className="w-4 h-4 mr-2" />
-                      {t.label}
+                      <Undo2 className="w-4 h-4 mr-2" />
+                      {undoMutation.isPending ? "Undoing..." : `Undo (back to ${(lastTransitionEvent.fromStatus ?? "").replace(/_/g, " ")})`}
                     </Button>
-                  ))}
-                </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
