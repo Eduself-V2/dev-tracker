@@ -101,6 +101,33 @@ CREATE TABLE requirement_assignees (
   CONSTRAINT fk_ra_assignedby FOREIGN KEY (assigned_by_id) REFERENCES users (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE requirement_testers (
+  id int NOT NULL AUTO_INCREMENT,
+  requirement_id int NOT NULL,
+  tester_id int NOT NULL,
+  created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_rt_req_tester (requirement_id, tester_id),
+  KEY fk_rt_req (requirement_id),
+  KEY fk_rt_tester (tester_id),
+  CONSTRAINT fk_rt_req FOREIGN KEY (requirement_id) REFERENCES requirements (id) ON DELETE CASCADE,
+  CONSTRAINT fk_rt_tester FOREIGN KEY (tester_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE task_pins (
+  id int NOT NULL AUTO_INCREMENT,
+  user_id int NOT NULL,
+  requirement_id int NOT NULL,
+  committed_minutes int DEFAULT NULL,
+  pinned_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_tp_user_req (user_id, requirement_id),
+  KEY fk_tp_user (user_id),
+  KEY fk_tp_req (requirement_id),
+  CONSTRAINT fk_tp_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_tp_req FOREIGN KEY (requirement_id) REFERENCES requirements (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE project_references (
   id int NOT NULL AUTO_INCREMENT,
   project_id int NOT NULL,

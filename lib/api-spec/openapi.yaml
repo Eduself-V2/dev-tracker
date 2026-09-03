@@ -366,6 +366,13 @@ paths:
           required: false
           schema:
             type: integer
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Max number of "recently updated" items to return. 0 means no limit (all). Defaults to 10.
       responses:
         "200":
           description: Summary

@@ -458,8 +458,17 @@ export const TrackerUnpinCommentParams = zod.object({
 /**
  * @summary Tracker dashboard summary
  */
+export const trackerStatsSummaryQueryLimitMin = 0;
+
 export const TrackerStatsSummaryQueryParams = zod.object({
   projectId: zod.coerce.number().optional(),
+  limit: zod.coerce
+    .number()
+    .min(trackerStatsSummaryQueryLimitMin)
+    .optional()
+    .describe(
+      'Max number of \"recently updated\" items to return. 0 means no limit (all). Defaults to 10.',
+    ),
 });
 
 export const TrackerStatsSummaryResponse = zod.object({
