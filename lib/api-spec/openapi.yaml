@@ -290,6 +290,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RequirementDetail"
+  /tracker/requirements/{id}/undo-transition:
+    post:
+      operationId: trackerUndoTransition
+      tags: [tracker-requirements]
+      summary: Revert the most recent status transition (original actor or admin only, within the undo window)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Requirement reverted to its previous status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Requirement"
   /tracker/requirements/{id}/comments:
     post:
       operationId: trackerAddComment
@@ -366,6 +384,13 @@ paths:
           required: false
           schema:
             type: integer
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Max number of "recently updated" items to return. 0 means no limit (all). Defaults to 10.
       responses:
         "200":
           description: Summary

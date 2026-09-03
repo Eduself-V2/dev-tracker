@@ -130,7 +130,7 @@ function TodaysGoals() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[420px] overflow-y-auto scrollbar-thin pr-2 -mr-2">
             {pinList.map((pin) => (
               <Link key={pin.id} href={`/requirements/${pin.requirementId}`}>
                 <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer group">
@@ -165,9 +165,18 @@ function TodaysGoals() {
   );
 }
 
+const RECENT_LIMIT_OPTIONS = [
+  { value: "10", label: "10" },
+  { value: "25", label: "25" },
+  { value: "50", label: "50" },
+  { value: "100", label: "100" },
+  { value: "0", label: "All" },
+];
+
 export default function Dashboard() {
   const [projectId, setProjectId] = useState<number | undefined>(undefined);
-  const { data: stats, isLoading } = useTrackerStatsSummary({ projectId });
+  const [recentLimit, setRecentLimit] = useState(10);
+  const { data: stats, isLoading } = useTrackerStatsSummary({ projectId, limit: recentLimit });
   const { data: projects } = useTrackerListProjects();
 
   if (isLoading) {
@@ -266,8 +275,26 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:grid-cols-1">
         <Card className="col-span-1 shadow-sm">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
             <CardTitle>Recently Updated</CardTitle>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground shrink-0">Show</span>
+              <Select
+                value={recentLimit.toString()}
+                onValueChange={(val) => setRecentLimit(parseInt(val))}
+              >
+                <SelectTrigger className="w-[90px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RECENT_LIMIT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {recentItems.length === 0 ? (

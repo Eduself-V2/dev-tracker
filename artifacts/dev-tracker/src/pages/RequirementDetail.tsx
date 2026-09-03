@@ -5,6 +5,7 @@ import {
   useTrackerGetRequirement,
   getTrackerGetRequirementQueryKey,
   useTrackerTransitionRequirement,
+  useTrackerUndoTransition,
   useTrackerAddComment,
   useTrackerListUsers,
   getTrackerListRequirementsQueryKey,
@@ -26,7 +27,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor, isEditorContentEmpty } from "@/components/ui/rich-text-editor";
 import { RichTextContent } from "@/components/ui/rich-text-content";
-import { plainTextToHtml } from "@/lib/rich-text";
+import { plainTextToHtml, stripHtml } from "@/lib/rich-text";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -72,6 +74,8 @@ import {
   ChevronsUpDown,
   Pin,
   Timer,
+  Search,
+  Undo2,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -79,6 +83,8 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { format, formatDistanceToNow, isSameDay } from "date-fns";
+
+const UNDO_TRANSITION_WINDOW_MS = 15 * 60 * 1000;
 
 function renderWithLinks(text: string) {
   const parts = text.split(/(https?:\/\/[^\s<>"]+)/g);
@@ -421,6 +427,7 @@ export default function RequirementDetail() {
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [pinSelectedMinutes, setPinSelectedMinutes] = useState<number | null>(null);
   const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
+  const [commentSearch, setCommentSearch] = useState("");
   const highlightTimeoutRef = useRef<number | null>(null);
 
   const { data: pins } = useTrackerListPins();
@@ -480,6 +487,23 @@ export default function RequirementDetail() {
     },
   });
 
+  const undoMutation = useTrackerUndoTransition({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) });
+        queryClient.invalidateQueries({ queryKey: getTrackerListRequirementsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getTrackerStatsSummaryQueryKey() });
+        toast({ title: "Status change undone" });
+      },
+      onError: (err: any) =>
+        toast({ title: err?.data?.error ?? "Failed to undo status change", variant: "destructive" }),
+    },
+  });
+
+  const handleUndo = () => {
+    undoMutation.mutate({ id: reqId });
+  };
+
   const pinCommentMutation = useTrackerPinComment({
     mutation: {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getTrackerGetRequirementQueryKey(reqId) }),
@@ -529,6 +553,23 @@ export default function RequirementDetail() {
   const reqAttachments = allAttachments.filter((a) => a.commentId === null);
   const allowedTransitions = getAllowedTransitions(requirement.status, user?.role || "");
   const pinnedComments = comments.filter((c: any) => c.isPinned);
+
+  const lastTransitionEvent = [...events].reverse().find((e: any) => e.kind === "transitioned" && e.fromStatus);
+  const canUndoTransition =
+    !!lastTransitionEvent &&
+    (user?.id === lastTransitionEvent.actorId || user?.role === "admin") &&
+    Date.now() - new Date(lastTransitionEvent.createdAt).getTime() < UNDO_TRANSITION_WINDOW_MS;
+
+  const commentSearchQuery = commentSearch.trim().toLowerCase();
+  const commentMatchesSearch = (c: any) =>
+    stripHtml(c.body).toLowerCase().includes(commentSearchQuery) ||
+    c.authorName.toLowerCase().includes(commentSearchQuery);
+  const topLevelComments = comments.filter((c) => !c.parentId);
+  const visibleTopLevelComments = commentSearchQuery
+    ? topLevelComments.filter(
+        (c) => commentMatchesSearch(c) || comments.some((r) => r.parentId === c.id && commentMatchesSearch(r)),
+      )
+    : topLevelComments;
 
   const handleTransition = (status: TransitionRequirementToStatus) => {
     transitionMutation.mutate({ id: reqId, data: { toStatus: status, note: transitionNote || undefined } });
@@ -983,10 +1024,22 @@ export default function RequirementDetail() {
 
           <Card className="shadow-sm">
             <CardHeader className="pb-3 border-b bg-muted/20">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
-                Discussion
-              </CardTitle>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Discussion
+                </CardTitle>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search discussion..."
+                    className="pl-8 h-8 text-sm"
+                    value={commentSearch}
+                    onChange={(e) => setCommentSearch(e.target.value)}
+                  />
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               <div className="max-h-[600px] overflow-y-auto scrollbar-thin pr-2 -mr-2 space-y-6">
@@ -1032,16 +1085,17 @@ export default function RequirementDetail() {
                   <Separator />
                 </div>
               )}
-              {comments.length === 0 ? (
+              {visibleTopLevelComments.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                  <p>No comments yet. Start the conversation!</p>
+                  <p>{commentSearchQuery ? "No comments match your search." : "No comments yet. Start the conversation!"}</p>
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {comments.filter((c) => !c.parentId).map((comment) => {
+                  {visibleTopLevelComments.map((comment) => {
                     const cmtAttachments = allAttachments.filter((a) => a.commentId === comment.id);
-                    const replies = comments.filter((c) => c.parentId === comment.id);
+                    const allReplies = comments.filter((c) => c.parentId === comment.id);
+                    const replies = commentSearchQuery ? allReplies.filter(commentMatchesSearch) : allReplies;
                     return (
                       <div key={comment.id}>
                         <div
@@ -1284,33 +1338,51 @@ export default function RequirementDetail() {
         </div>
 
         <div className="space-y-6">
-          {allowedTransitions.length > 0 && (
+          {(allowedTransitions.length > 0 || canUndoTransition) && (
             <Card className="border-primary/20 shadow-md bg-primary/5 overflow-hidden">
               <CardHeader className="pb-3 border-b bg-background/50">
                 <CardTitle className="text-lg">Update Status</CardTitle>
                 <CardDescription>Move this requirement to the next stage.</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 space-y-4">
-                <Textarea
-                  placeholder="Optional note for this transition..."
-                  value={transitionNote}
-                  onChange={(e) => setTransitionNote(e.target.value)}
-                  className="text-sm min-h-[80px] bg-background"
-                />
-                <div className="space-y-2">
-                  {allowedTransitions.map((t) => (
+                {allowedTransitions.length > 0 && (
+                  <>
+                    <Textarea
+                      placeholder="Optional note for this transition..."
+                      value={transitionNote}
+                      onChange={(e) => setTransitionNote(e.target.value)}
+                      className="text-sm min-h-[80px] bg-background"
+                    />
+                    <div className="space-y-2">
+                      {allowedTransitions.map((t) => (
+                        <Button
+                          key={t.status}
+                          variant={t.variant}
+                          className="w-full justify-start"
+                          onClick={() => handleTransition(t.status)}
+                          disabled={transitionMutation.isPending}
+                        >
+                          <t.icon className="w-4 h-4 mr-2" />
+                          {t.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {canUndoTransition && (
+                  <>
+                    {allowedTransitions.length > 0 && <Separator />}
                     <Button
-                      key={t.status}
-                      variant={t.variant}
+                      variant="outline"
                       className="w-full justify-start"
-                      onClick={() => handleTransition(t.status)}
-                      disabled={transitionMutation.isPending}
+                      onClick={handleUndo}
+                      disabled={undoMutation.isPending}
                     >
-                      <t.icon className="w-4 h-4 mr-2" />
-                      {t.label}
+                      <Undo2 className="w-4 h-4 mr-2" />
+                      {undoMutation.isPending ? "Undoing..." : `Undo (back to ${(lastTransitionEvent.fromStatus ?? "").replace(/_/g, " ")})`}
                     </Button>
-                  ))}
-                </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}

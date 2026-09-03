@@ -1225,6 +1225,90 @@ export const useTrackerTransitionRequirement = <
 };
 
 /**
+ * @summary Revert the most recent status transition (original actor or admin only, within the undo window)
+ */
+export const getTrackerUndoTransitionUrl = (id: number) => {
+  return `/api/tracker/requirements/${id}/undo-transition`;
+};
+
+export const trackerUndoTransition = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Requirement> => {
+  return customFetch<Requirement>(getTrackerUndoTransitionUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getTrackerUndoTransitionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerUndoTransition>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof trackerUndoTransition>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["trackerUndoTransition"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof trackerUndoTransition>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return trackerUndoTransition(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TrackerUndoTransitionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof trackerUndoTransition>>
+>;
+
+export type TrackerUndoTransitionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Revert the most recent status transition (original actor or admin only, within the undo window)
+ */
+export const useTrackerUndoTransition = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof trackerUndoTransition>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof trackerUndoTransition>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getTrackerUndoTransitionMutationOptions(options));
+};
+
+/**
  * @summary Add a comment to a requirement
  */
 export const getTrackerAddCommentUrl = (id: number) => {
