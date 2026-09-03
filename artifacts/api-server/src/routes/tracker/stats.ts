@@ -60,9 +60,19 @@ router.get("/summary", async (req, res, next) => {
       recentScope = ` AND r.project_id IN (${PROJECT_SCOPE_SUBQUERY})`;
       recentScopeValues = [me.id, me.id, me.id];
     }
+
+    // limit=0 (or "all") means no cap; otherwise defaults to 10 and is
+    // clamped to a sane upper bound to avoid returning the whole table.
+    const rawLimit = req.query.limit;
+    const requestedLimit = rawLimit === undefined ? 10 : Number(rawLimit);
+    const useLimit = Number.isFinite(requestedLimit) && requestedLimit > 0;
+    const limitClause = useLimit ? "LIMIT ?" : "";
+    const limitValues = useLimit ? [Math.min(Math.floor(requestedLimit), 500)] : [];
+
     const recentValues = [
       ...(projectId ? [projectId] : []),
       ...recentScopeValues,
+      ...limitValues,
     ];
 
     const [recentRows] = await trackerPool.query(
@@ -87,7 +97,7 @@ router.get("/summary", async (req, res, next) => {
        WHERE 1=1${recentProject}${recentScope}
        GROUP BY r.id
        ORDER BY last_activity_at DESC
-       LIMIT 8`,
+       ${limitClause}`,
       recentValues,
     );
 

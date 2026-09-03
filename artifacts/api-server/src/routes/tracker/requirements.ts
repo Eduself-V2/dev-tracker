@@ -8,6 +8,7 @@ import {
   TrackerUpdateRequirementBody,
   TrackerTransitionRequirementParams,
   TrackerTransitionRequirementBody,
+  TrackerUndoTransitionParams,
   TrackerAddCommentParams,
   TrackerAddCommentBody,
 } from "@workspace/api-zod";
@@ -725,6 +726,138 @@ router.post("/:id/transition", async (req, res, next) => {
           toStatus: body.toStatus,
           projectName: updated.project_name,
           note: body.note,
+        }),
+      );
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+const UNDO_TRANSITION_WINDOW_MS = 15 * 60 * 1000;
+
+router.post("/:id/undo-transition", async (req, res, next) => {
+  try {
+    const { id } = TrackerUndoTransitionParams.parse(req.params);
+    const me = req.trackerUser!;
+
+    const [existRows] = await trackerPool.query(
+      "SELECT * FROM requirements WHERE id = ?",
+      [id],
+    );
+    const existing = (existRows as RequirementRow[])[0];
+    if (!existing) {
+      res.status(404).json({ error: "Requirement not found" });
+      return;
+    }
+
+    const [lastEvtRows] = await trackerPool.query(
+      `SELECT e.*, u.name AS actor_name FROM requirement_events e
+       JOIN users u ON u.id = e.actor_id
+       WHERE e.requirement_id = ? AND e.kind = 'transitioned'
+       ORDER BY e.created_at DESC, e.id DESC
+       LIMIT 1`,
+      [id],
+    );
+    const lastTransition = (lastEvtRows as EventRow[])[0];
+    if (!lastTransition || !lastTransition.from_status || lastTransition.to_status !== existing.status) {
+      res.status(409).json({ error: "There is no recent status change to undo" });
+      return;
+    }
+
+    if (me.id !== lastTransition.actor_id && me.role !== "admin") {
+      res.status(403).json({ error: "Only the person who made this change or an admin can undo it" });
+      return;
+    }
+
+    if (Date.now() - lastTransition.created_at.getTime() > UNDO_TRANSITION_WINDOW_MS) {
+      res.status(403).json({ error: "This status change can no longer be undone (15 minute window has passed)" });
+      return;
+    }
+
+    const revertToStatus = lastTransition.from_status as Status;
+
+    const setClauses = ["status = ?"];
+    const setValues: unknown[] = [revertToStatus];
+    if (lastTransition.to_status === "in_testing") {
+      setClauses.push("test_cycles = GREATEST(test_cycles - 1, 0)");
+    }
+    setValues.push(id);
+
+    await trackerPool.query(
+      `UPDATE requirements SET ${setClauses.join(", ")} WHERE id = ?`,
+      setValues,
+    );
+    await trackerPool.query(
+      "INSERT INTO requirement_events (requirement_id, kind, from_status, to_status, note, actor_id) VALUES (?, 'transitioned', ?, ?, ?, ?)",
+      [id, existing.status, revertToStatus, `Undo: reverted status change made by ${lastTransition.actor_name}`, me.id],
+    );
+
+    const [curAssigneeRows] = await trackerPool.query(
+      "SELECT user_id FROM requirement_assignees WHERE requirement_id = ?",
+      [id],
+    );
+    const currentAssigneeIds = (curAssigneeRows as Array<{ user_id: number }>).map((r) => r.user_id);
+
+    const [testerRows] = await trackerPool.query(
+      "SELECT tester_id FROM requirement_testers WHERE requirement_id = ?",
+      [id],
+    );
+    const existingTesterIds = (testerRows as Array<{ tester_id: number }>).map((r) => r.tester_id);
+
+    let notifyUserIds: (number | null)[];
+    if (revertToStatus === "open" || revertToStatus === "confirmed") {
+      notifyUserIds = [existing.developer_id, ...currentAssigneeIds];
+    } else if (revertToStatus === "in_testing") {
+      notifyUserIds = existingTesterIds;
+    } else if (revertToStatus === "pushed_to_production") {
+      const [adminRows] = await trackerPool.query(
+        "SELECT id FROM users WHERE role = 'admin'",
+      );
+      notifyUserIds = (adminRows as Array<{ id: number }>).map((r) => r.id);
+      notifyUserIds.push(existing.developer_id);
+    } else {
+      notifyUserIds = [existing.developer_id, ...currentAssigneeIds, ...existingTesterIds];
+    }
+
+    const notifyIds = [...new Set(
+      notifyUserIds.filter((uid): uid is number => uid !== null && uid !== me.id),
+    )];
+
+    let emailAddresses: string[] = [];
+    let recipientNames: string[] = [];
+    if (notifyIds.length > 0) {
+      const usersMap = await getUserEmails(notifyIds);
+      emailAddresses = notifyIds.map((uid) => usersMap.get(uid)?.email).filter((e): e is string => !!e);
+      recipientNames = notifyIds.map((uid) => usersMap.get(uid)?.name).filter((n): n is string => !!n);
+    }
+
+    if (emailAddresses.length > 0) {
+      await trackerPool.query(
+        "INSERT INTO requirement_events (requirement_id, kind, actor_id, note) VALUES (?, 'notified', ?, ?)",
+        [id, me.id, `Sent mail to: ${recipientNames.join(", ")}`],
+      );
+    }
+
+    const [rows] = await trackerPool.query(
+      `${REQ_LIST_SQL} WHERE r.id = ? GROUP BY r.id`,
+      [id],
+    );
+    const updated = (rows as RequirementListRow[])[0];
+    res.json(serializeRequirementListRow(updated));
+
+    if (emailAddresses.length > 0) {
+      sendEmail(
+        emailAddresses,
+        `Task status updated: ${updated.title}`,
+        statusTransitionTemplate({
+          taskId: id,
+          taskTitle: updated.title,
+          actorName: me.name,
+          fromStatus: existing.status,
+          toStatus: revertToStatus,
+          projectName: updated.project_name,
+          note: `Undo of previous change by ${lastTransition.actor_name}`,
         }),
       );
     }

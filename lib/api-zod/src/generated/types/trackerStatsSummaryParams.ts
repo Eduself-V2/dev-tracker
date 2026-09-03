@@ -8,4 +8,9 @@
 
 export type TrackerStatsSummaryParams = {
   projectId?: number;
+  /**
+   * Max number of "recently updated" items to return. 0 means no limit (all). Defaults to 10.
+   * @minimum 0
+   */
+  limit?: number;
 };

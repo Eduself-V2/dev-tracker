@@ -5,6 +5,10 @@ export function looksLikeHtml(raw: string): boolean {
   return /<[a-z][\s\S]*>/i.test(raw);
 }
 
+export function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export function plainTextToHtml(raw: string): string {
   if (looksLikeHtml(raw)) return raw;
 
