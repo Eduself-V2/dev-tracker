@@ -219,6 +219,24 @@ function AttachmentList({ attachments, reqId, onDeleted }: { attachments: Attach
   );
 }
 
+const STATUS_ORDER = ["open", "in_testing", "needs_fix", "confirmed", "pushed_to_production"];
+
+const STATUS_LABEL: Record<string, string> = {
+  open: "Open",
+  in_testing: "In Testing",
+  needs_fix: "Needs Fix",
+  confirmed: "Confirmed",
+  pushed_to_production: "In Production",
+};
+
+const STATUS_DOT: Record<string, string> = {
+  open: "bg-blue-500",
+  in_testing: "bg-amber-500",
+  needs_fix: "bg-red-500",
+  confirmed: "bg-emerald-500",
+  pushed_to_production: "bg-purple-500",
+};
+
 function TimelineView({ events, expanded, onToggle }: { events: any[]; expanded: boolean; onToggle: () => void }) {
   const visibleEvents = expanded ? events : events.slice(0, 5);
   const hasMore = events.length > 5;
@@ -555,6 +573,18 @@ export default function RequirementDetail() {
   const pinnedComments = comments.filter((c: any) => c.isPinned);
 
   const lastTransitionEvent = [...events].reverse().find((e: any) => e.kind === "transitioned" && e.fromStatus);
+
+  // Count status changes per target status; an undo cancels the change it reverted
+  const countedTransitions: any[] = [];
+  for (const e of events as any[]) {
+    if (e.kind !== "transitioned" || !e.fromStatus || !e.toStatus) continue;
+    if (typeof e.note === "string" && e.note.startsWith("Undo:")) countedTransitions.pop();
+    else countedTransitions.push(e);
+  }
+  const transitionStats = STATUS_ORDER.map((status) => {
+    const matching = countedTransitions.filter((e) => e.toStatus === status);
+    return { status, count: matching.length, last: matching[matching.length - 1] };
+  }).filter((s) => s.count > 0);
   const canUndoTransition =
     !!lastTransitionEvent &&
     (user?.id === lastTransitionEvent.actorId || user?.role === "admin") &&
@@ -820,7 +850,7 @@ export default function RequirementDetail() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-500 pb-20">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       {/* Pin dialog */}
       <Dialog open={pinDialogOpen} onOpenChange={setPinDialogOpen}>
         <DialogContent className="sm:max-w-sm">
@@ -1341,8 +1371,54 @@ export default function RequirementDetail() {
           {(allowedTransitions.length > 0 || canUndoTransition) && (
             <Card className="border-primary/20 shadow-md bg-primary/5 overflow-hidden">
               <CardHeader className="pb-3 border-b bg-background/50">
-                <CardTitle className="text-lg">Update Status</CardTitle>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-lg">Update Status</CardTitle>
+                  <Badge variant="secondary" className="shrink-0" title="Total status changes for this requirement">
+                    {countedTransitions.length} {countedTransitions.length === 1 ? "update" : "updates"}
+                  </Badge>
+                </div>
                 <CardDescription>Move this requirement to the next stage.</CardDescription>
+                {transitionStats.length > 0 && (
+                  <div className="mt-3 rounded-lg border bg-background/60 divide-y divide-border/60 overflow-hidden">
+                    {transitionStats.map(({ status, count, last }) => {
+                      const isCurrent = status === requirement.status;
+                      return (
+                        <div
+                          key={status}
+                          className={cn(
+                            "flex items-start gap-3 px-3 py-3 transition-colors",
+                            isCurrent && "bg-primary/5",
+                          )}
+                        >
+                          <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", STATUS_DOT[status])} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-medium">{STATUS_LABEL[status]}</span>
+                              {isCurrent && (
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-primary">Current</span>
+                              )}
+                            </div>
+                            {last && (
+                              <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                                <p className="flex items-start gap-1.5">
+                                  <User className="mt-px h-3 w-3 shrink-0" />
+                                  <span className="break-words font-medium text-foreground/80">{last.actorName}</span>
+                                </p>
+                                <p className="flex items-center gap-1.5" title={format(new Date(last.createdAt), "PPp")}>
+                                  <Clock className="h-3 w-3 shrink-0" />
+                                  <span>{formatDistanceToNow(new Date(last.createdAt), { addSuffix: true })}</span>
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums">
+                            ×{count}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="pt-4 space-y-4">
                 {allowedTransitions.length > 0 && (
