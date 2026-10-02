@@ -150,9 +150,14 @@ router.get("/report", async (req, res, next) => {
     const targetUserId: number | null =
       me.role === "admin" ? (userId ? Number(userId) : null) : me.id;
 
+    // The client sends exact ISO instants for the user's local day boundaries.
+    // Plain "yyyy-MM-dd" values are still accepted and treated as UTC days.
     const start = new Date(startDate as string);
     const end = new Date(endDate as string);
-    end.setHours(23, 59, 59, 999);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ message: "Invalid startDate or endDate" });
+    }
+    if (!String(endDate).includes("T")) end.setUTCHours(23, 59, 59, 999);
 
     const userWhere = targetUserId ? "WHERE id = ?" : "";
     const userParam = targetUserId ? [targetUserId] : [];
