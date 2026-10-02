@@ -28,6 +28,7 @@ export interface TrackerUser {
   role: TrackerUserRole;
   createdAt: string;
   passwordResetRequired: boolean;
+  leaderId?: number | null;
 }
 
 export interface TrackerLogin {
@@ -74,6 +75,7 @@ export interface CreateTrackerUser {
    */
   password: string;
   role: CreateTrackerUserRole;
+  leaderId?: number | null;
 }
 
 export type UpdateTrackerUserRole =
@@ -100,6 +102,7 @@ export interface UpdateTrackerUser {
    */
   password?: string;
   role?: UpdateTrackerUserRole;
+  leaderId?: number | null;
 }
 
 export type RequirementStatus =

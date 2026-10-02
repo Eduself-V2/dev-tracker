@@ -209,7 +209,7 @@ export default function RequirementCreate() {
                   )}
                 />
 
-                {(user?.role === "admin" || user?.role === "manager") && (
+                {user?.role === "admin" && (
                   <FormField
                     control={form.control}
                     name="assigneeIds"

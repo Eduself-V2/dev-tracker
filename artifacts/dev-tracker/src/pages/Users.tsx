@@ -34,7 +34,10 @@ const userSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters").max(60),
   password: z.string().optional(),
   role: z.enum(["admin", "manager", "developer", "tester"] as const),
+  leaderId: z.number().nullable(),
 });
+
+const NO_LEADER = "none";
 
 type UserFormValues = z.infer<typeof userSchema>;
 
@@ -110,6 +113,7 @@ export default function Users() {
       username: "",
       password: "",
       role: "developer",
+      leaderId: null,
     },
   });
 
@@ -134,6 +138,7 @@ export default function Users() {
           email: data.email,
           mobile: data.mobile || null,
           role: data.role as CreateTrackerUserRole,
+          leaderId: data.role === "admin" ? null : data.leaderId,
           ...(data.password ? { password: data.password } : {})
         }
       });
@@ -150,6 +155,7 @@ export default function Users() {
           username: data.username,
           password: data.password,
           role: data.role as CreateTrackerUserRole,
+          leaderId: data.role === "admin" ? null : data.leaderId,
         }
       });
     }
@@ -164,6 +170,7 @@ export default function Users() {
       username: user.username,
       password: "",
       role: user.role,
+      leaderId: user.leaderId ?? null,
     });
   };
 
@@ -176,6 +183,7 @@ export default function Users() {
       username: "",
       password: "",
       role: "developer",
+      leaderId: null,
     });
     setIsCreateOpen(true);
   };
@@ -189,6 +197,38 @@ export default function Users() {
       default: return <Badge variant="outline">{role}</Badge>;
     }
   };
+
+  const admins = (users ?? []).filter((u) => u.role === "admin" && u.id !== editUserId);
+  const leaderName = (id: number | null | undefined) => users?.find((u) => u.id === id)?.name;
+
+  const leaderField = form.watch("role") !== "admin" && (
+    <FormField
+      control={form.control}
+      name="leaderId"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Leader</FormLabel>
+          <Select
+            onValueChange={(val) => field.onChange(val === NO_LEADER ? null : parseInt(val))}
+            value={field.value ? field.value.toString() : NO_LEADER}
+          >
+            <FormControl>
+              <SelectTrigger>
+                <SelectValue placeholder="Select leader" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectItem value={NO_LEADER}>No leader</SelectItem>
+              {admins.map((a) => (
+                <SelectItem key={a.id} value={a.id.toString()}>{a.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -321,6 +361,8 @@ export default function Users() {
                     )}
                   />
                 </div>
+
+                {leaderField}
                 
                 <DialogFooter className="pt-4">
                   <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
@@ -342,6 +384,7 @@ export default function Users() {
               <TableHead>Member</TableHead>
               <TableHead>Username</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Leader</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -354,6 +397,7 @@ export default function Users() {
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
@@ -361,7 +405,7 @@ export default function Users() {
               ))
             ) : users?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -371,6 +415,9 @@ export default function Users() {
                   <TableCell className="font-medium">{u.name}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">@{u.username}</TableCell>
                   <TableCell>{getRoleBadge(u.role)}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {u.role === "admin" ? "—" : leaderName(u.leaderId) ?? "None"}
+                  </TableCell>
                   <TableCell className="text-sm">
                     <div className="flex flex-col text-muted-foreground">
                       <span>{u.email}</span>
@@ -419,6 +466,7 @@ export default function Users() {
                                   <FormItem><FormLabel>System Role</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger></FormControl><SelectContent><SelectItem value="admin">Administrator</SelectItem><SelectItem value="manager">Manager</SelectItem><SelectItem value="developer">Developer</SelectItem><SelectItem value="tester">QA Tester</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                                 )} />
                               </div>
+                              {leaderField}
                               <DialogFooter className="pt-4">
                                 <Button type="button" variant="outline" onClick={() => setEditUserId(null)}>Cancel</Button>
                                 <Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? "Saving..." : "Save Changes"}</Button>

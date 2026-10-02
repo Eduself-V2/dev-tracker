@@ -32,6 +32,7 @@ export const TrackerLoginResponse = zod.object({
   role: zod.enum(["admin", "manager", "developer", "tester"]),
   createdAt: zod.coerce.date(),
   passwordResetRequired: zod.boolean(),
+  leaderId: zod.number().nullish(),
 });
 
 /**
@@ -46,6 +47,7 @@ export const TrackerMeResponse = zod.object({
   role: zod.enum(["admin", "manager", "developer", "tester"]),
   createdAt: zod.coerce.date(),
   passwordResetRequired: zod.boolean(),
+  leaderId: zod.number().nullish(),
 });
 
 /**
@@ -73,6 +75,7 @@ export const TrackerListUsersResponseItem = zod.object({
   role: zod.enum(["admin", "manager", "developer", "tester"]),
   createdAt: zod.coerce.date(),
   passwordResetRequired: zod.boolean(),
+  leaderId: zod.number().nullish(),
 });
 export const TrackerListUsersResponse = zod.array(TrackerListUsersResponseItem);
 
@@ -100,6 +103,7 @@ export const TrackerCreateUserBody = zod.object({
     .min(trackerCreateUserBodyPasswordMin)
     .max(trackerCreateUserBodyPasswordMax),
   role: zod.enum(["admin", "manager", "developer", "tester"]),
+  leaderId: zod.number().nullish(),
 });
 
 /**
@@ -124,6 +128,7 @@ export const TrackerUpdateUserBody = zod.object({
     .max(trackerUpdateUserBodyPasswordMax)
     .optional(),
   role: zod.enum(["admin", "manager", "developer", "tester"]).optional(),
+  leaderId: zod.number().nullish(),
 });
 
 export const TrackerUpdateUserResponse = zod.object({
@@ -135,6 +140,7 @@ export const TrackerUpdateUserResponse = zod.object({
   role: zod.enum(["admin", "manager", "developer", "tester"]),
   createdAt: zod.coerce.date(),
   passwordResetRequired: zod.boolean(),
+  leaderId: zod.number().nullish(),
 });
 
 /**

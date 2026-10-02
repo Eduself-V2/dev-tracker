@@ -21,14 +21,26 @@ function serialize(u: Omit<UserRow, "password_hash">) {
     mobile: u.mobile,
     username: u.username,
     role: u.role,
+    leaderId: u.leader_id ?? null,
     createdAt: u.created_at.toISOString(),
   };
+}
+
+// A leader must be an existing admin, and a user cannot lead themselves.
+async function validateLeaderId(leaderId: number | null | undefined, selfId?: number): Promise<string | null> {
+  if (leaderId === undefined || leaderId === null) return null;
+  if (selfId !== undefined && leaderId === selfId) return "A user cannot be their own leader";
+  const [rows] = await trackerPool.query("SELECT role FROM users WHERE id = ?", [leaderId]);
+  const leader = (rows as Array<{ role: string }>)[0];
+  if (!leader) return "Leader not found";
+  if (leader.role !== "admin") return "Leader must be an admin";
+  return null;
 }
 
 router.get("/", async (_req, res, next) => {
   try {
     const [rows] = await trackerPool.query(
-      "SELECT id, name, email, mobile, username, role, created_at FROM users ORDER BY created_at DESC",
+      "SELECT id, name, email, mobile, username, role, leader_id, created_at FROM users ORDER BY created_at DESC",
     );
     res.json((rows as Array<Omit<UserRow, "password_hash">>).map(serialize));
   } catch (err) {
@@ -39,10 +51,15 @@ router.get("/", async (_req, res, next) => {
 router.post("/", async (req, res, next) => {
   try {
     const body = TrackerCreateUserBody.parse(req.body);
+    const leaderError = await validateLeaderId(body.leaderId);
+    if (leaderError) {
+      res.status(400).json({ error: leaderError });
+      return;
+    }
     const hash = await bcrypt.hash(body.password, 10);
     try {
       const [result] = await trackerPool.query(
-        "INSERT INTO users (name, email, mobile, username, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO users (name, email, mobile, username, password_hash, role, leader_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
         [
           body.name,
           body.email,
@@ -50,11 +67,12 @@ router.post("/", async (req, res, next) => {
           body.username,
           hash,
           body.role,
+          body.leaderId ?? null,
         ],
       );
       const insertId = (result as { insertId: number }).insertId;
       const [rows] = await trackerPool.query(
-        "SELECT id, name, email, mobile, username, role, created_at FROM users WHERE id = ?",
+        "SELECT id, name, email, mobile, username, role, leader_id, created_at FROM users WHERE id = ?",
         [insertId],
       );
       const user = (rows as Array<Omit<UserRow, "password_hash">>)[0];
@@ -96,6 +114,15 @@ router.patch("/:id", async (req, res, next) => {
       fields.push("role = ?");
       values.push(body.role);
     }
+    if (body.leaderId !== undefined) {
+      const leaderError = await validateLeaderId(body.leaderId, id);
+      if (leaderError) {
+        res.status(400).json({ error: leaderError });
+        return;
+      }
+      fields.push("leader_id = ?");
+      values.push(body.leaderId ?? null);
+    }
     if (body.password) {
       const hash = await bcrypt.hash(body.password, 10);
       fields.push("password_hash = ?");
@@ -118,7 +145,7 @@ router.patch("/:id", async (req, res, next) => {
       }
     }
     const [rows] = await trackerPool.query(
-      "SELECT id, name, email, mobile, username, role, created_at FROM users WHERE id = ?",
+      "SELECT id, name, email, mobile, username, role, leader_id, created_at FROM users WHERE id = ?",
       [id],
     );
     const user = (rows as Array<Omit<UserRow, "password_hash">>)[0];

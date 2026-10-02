@@ -275,7 +275,20 @@ router.post("/", async (req, res, next) => {
       }
     }
 
-    const assigneeIds = body.assigneeIds && body.assigneeIds.length > 0 ? body.assigneeIds : [me.id];
+    // Admins choose assignees (defaulting to themselves). Everyone else's
+    // requirement goes to their leader, who then assigns a developer; with
+    // no leader set it stays unassigned.
+    let assigneeIds: number[];
+    if (me.role === "admin") {
+      assigneeIds = body.assigneeIds && body.assigneeIds.length > 0 ? body.assigneeIds : [me.id];
+    } else {
+      const [leaderRows] = await trackerPool.query(
+        "SELECT leader_id FROM users WHERE id = ?",
+        [me.id],
+      );
+      const leaderId = (leaderRows as Array<{ leader_id: number | null }>)[0]?.leader_id;
+      assigneeIds = leaderId ? [leaderId] : [];
+    }
     if (assigneeIds.length > 0) {
       const placeholders = assigneeIds.map(() => "?").join(", ");
       const [arows] = await trackerPool.query(
@@ -297,18 +310,20 @@ router.post("/", async (req, res, next) => {
         sanitizedDescription || null,
         body.priority ?? "medium",
         me.id,
-        assigneeIds[0],
+        assigneeIds[0] ?? null,
         body.projectId,
       ],
     );
     const insertId = (insertResult as { insertId: number }).insertId;
 
     // Insert all assignees into the join table
-    const assigneeValues = assigneeIds.map((uid) => [insertId, uid, me.id]);
-    await trackerPool.query(
-      "INSERT IGNORE INTO requirement_assignees (requirement_id, user_id, assigned_by_id) VALUES ?",
-      [assigneeValues],
-    );
+    if (assigneeIds.length > 0) {
+      const assigneeValues = assigneeIds.map((uid) => [insertId, uid, me.id]);
+      await trackerPool.query(
+        "INSERT IGNORE INTO requirement_assignees (requirement_id, user_id, assigned_by_id) VALUES ?",
+        [assigneeValues],
+      );
+    }
 
     if (body.testerIds && body.testerIds.length > 0) {
       const testerValues = body.testerIds.map((tid) => [insertId, tid]);
