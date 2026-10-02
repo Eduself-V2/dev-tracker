@@ -515,6 +515,9 @@ components:
           format: date-time
         passwordResetRequired:
           type: boolean
+        leaderId:
+          type: integer
+          nullable: true
       required: [id, name, email, username, role, createdAt, passwordResetRequired]
     TrackerLogin:
       type: object
@@ -558,6 +561,9 @@ components:
         role:
           type: string
           enum: [admin, manager, developer, tester]
+        leaderId:
+          type: integer
+          nullable: true
       required: [name, email, username, password, role]
     UpdateTrackerUser:
       type: object
@@ -579,6 +585,9 @@ components:
         role:
           type: string
           enum: [admin, manager, developer, tester]
+        leaderId:
+          type: integer
+          nullable: true
     Requirement:
       type: object
       properties:

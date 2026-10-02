@@ -14,9 +14,12 @@ CREATE TABLE users (
   role enum('admin','manager','developer','tester') NOT NULL,
   created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   password_reset_required tinyint(1) NOT NULL DEFAULT 0,
+  leader_id int DEFAULT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY email (email),
-  UNIQUE KEY username (username)
+  UNIQUE KEY username (username),
+  KEY fk_user_leader (leader_id),
+  CONSTRAINT fk_user_leader FOREIGN KEY (leader_id) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE projects (

@@ -10,6 +10,7 @@ import type { PinItem } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import { format, formatDistanceToNow, differenceInMinutes } from "date-fns";
 import {
@@ -24,6 +25,8 @@ import {
   X,
   Timer,
   Target,
+  History,
+  Search,
 } from "lucide-react";
 import {
   Select,
@@ -86,12 +89,52 @@ function PinTimeInfo({ pin }: { pin: PinItem }) {
   );
 }
 
+function SectionSearch({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="relative w-full sm:w-56">
+      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+      <Input
+        type="search"
+        placeholder={placeholder}
+        className="pl-8 h-8 text-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+function NoSearchResults({ query }: { query: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+      <Search className="h-10 w-10 mb-3 opacity-20" />
+      <p className="text-sm font-medium">No results for "{query}"</p>
+    </div>
+  );
+}
+
 function TodaysGoals() {
   const { data: pins, isLoading } = useTrackerListPins();
   const unpinMutation = useTrackerUnpinTask();
   const qc = useQueryClient();
+  const [search, setSearch] = useState("");
 
   const pinList = Array.isArray(pins) ? pins : [];
+  const searchQuery = search.trim().toLowerCase();
+  const filteredPins = searchQuery
+    ? pinList.filter((pin) =>
+        [pin.title, statusLabels[pin.status] ?? pin.status]
+          .some((field) => field?.toLowerCase().includes(searchQuery)),
+      )
+    : pinList;
 
   function handleUnpin(e: React.MouseEvent, requirementId: number) {
     e.preventDefault();
@@ -104,13 +147,16 @@ function TodaysGoals() {
   return (
     <Card className="border-primary/20 shadow-sm">
       <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Target className="h-5 w-5 text-primary" />
           <CardTitle className="text-lg">Today's Goals</CardTitle>
           {pinList.length > 0 && (
-            <Badge variant="secondary" className="ml-auto text-xs">
-              {pinList.length} pinned
-            </Badge>
+            <div className="ml-auto flex w-full sm:w-auto items-center gap-2">
+              <SectionSearch value={search} onChange={setSearch} placeholder="Search goals..." />
+              <Badge variant="secondary" className="text-xs shrink-0">
+                {searchQuery ? `${filteredPins.length}/${pinList.length}` : pinList.length} pinned
+              </Badge>
+            </div>
           )}
         </div>
       </CardHeader>
@@ -129,9 +175,11 @@ function TodaysGoals() {
               Pin tasks from the Requirements list to set your targets for today.
             </p>
           </div>
+        ) : filteredPins.length === 0 ? (
+          <NoSearchResults query={search.trim()} />
         ) : (
           <div className="space-y-3 max-h-[420px] overflow-y-auto scrollbar-thin pr-2 -mr-2">
-            {pinList.map((pin) => (
+            {filteredPins.map((pin) => (
               <Link key={pin.id} href={`/requirements/${pin.requirementId}`}>
                 <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer group">
                   <Pin className="h-4 w-4 text-primary shrink-0" />
@@ -176,6 +224,7 @@ const RECENT_LIMIT_OPTIONS = [
 export default function Dashboard() {
   const [projectId, setProjectId] = useState<number | undefined>(undefined);
   const [recentLimit, setRecentLimit] = useState(10);
+  const [recentSearch, setRecentSearch] = useState("");
   const { data: stats, isLoading } = useTrackerStatsSummary({ projectId, limit: recentLimit });
   const { data: projects } = useTrackerListProjects();
 
@@ -195,6 +244,13 @@ export default function Dashboard() {
   if (!stats) return null;
 
   const recentItems = Array.isArray(stats.recent) ? stats.recent : [];
+  const recentSearchQuery = recentSearch.trim().toLowerCase();
+  const filteredRecentItems = recentSearchQuery
+    ? recentItems.filter((req) =>
+        [req.title, req.lastUpdatedByName, req.projectName, req.priority, statusLabels[req.status] ?? req.status]
+          .some((field) => field?.toLowerCase().includes(recentSearchQuery)),
+      )
+    : recentItems;
   const projectList = Array.isArray(projects) ? projects : [];
 
   const stageConfigs = [
@@ -273,17 +329,26 @@ export default function Dashboard() {
 
       <TodaysGoals />
 
-      <div className="grid gap-4 md:grid-cols-1">
-        <Card className="col-span-1 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-            <CardTitle>Recently Updated</CardTitle>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground shrink-0">Show</span>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <History className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg">Recently Updated</CardTitle>
+            {recentItems.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {recentSearchQuery ? `${filteredRecentItems.length}/${recentItems.length}` : recentItems.length}
+              </Badge>
+            )}
+            <div className="ml-auto flex w-full sm:w-auto items-center gap-2">
+              {recentItems.length > 0 && (
+                <SectionSearch value={recentSearch} onChange={setRecentSearch} placeholder="Search recent..." />
+              )}
+              <span className="text-xs text-muted-foreground shrink-0">Show</span>
               <Select
                 value={recentLimit.toString()}
                 onValueChange={(val) => setRecentLimit(parseInt(val))}
               >
-                <SelectTrigger className="w-[90px]">
+                <SelectTrigger className="h-8 w-[80px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -295,49 +360,59 @@ export default function Dashboard() {
                 </SelectContent>
               </Select>
             </div>
-          </CardHeader>
-          <CardContent>
-            {recentItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                <ListTodo className="h-12 w-12 mb-4 opacity-20" />
-                <p>No recent requirements to show.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {recentItems.map((req) => (
-                  <Link key={req.id} href={`/requirements/${req.id}`}>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer group">
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <span className="font-semibold text-base group-hover:text-primary transition-colors truncate">
-                          {req.title}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          Last activity {format(new Date(req.lastActivityAt ?? req.updatedAt), "MMM d, h:mm a")}
-                          {req.lastUpdatedByName && (
-                            <span className="ml-1">· by <span className="font-medium text-foreground">{req.lastUpdatedByName}</span></span>
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-                        <Badge variant="outline" className="capitalize">
-                          {req.status.replace(/_/g, " ")}
-                        </Badge>
-                        <Badge variant={req.priority === "high" ? "destructive" : req.priority === "medium" ? "default" : "secondary"}>
-                          {req.priority}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <FolderKanban className="w-3 h-3" />
-                          {req.projectName}
-                        </span>
-                      </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {recentItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+              <ListTodo className="h-10 w-10 mb-3 opacity-20" />
+              <p className="text-sm font-medium">No recent requirements to show.</p>
+            </div>
+          ) : filteredRecentItems.length === 0 ? (
+            <NoSearchResults query={recentSearch.trim()} />
+          ) : (
+            <div className="space-y-3 max-h-[480px] overflow-y-auto scrollbar-thin pr-2 -mr-2">
+              {filteredRecentItems.map((req) => (
+                <Link key={req.id} href={`/requirements/${req.id}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer group">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+                        {req.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                        {format(new Date(req.lastActivityAt ?? req.updatedAt), "MMM d, h:mm a")}
+                        {req.lastUpdatedByName && (
+                          <span> · by <span className="font-medium text-foreground">{req.lastUpdatedByName}</span></span>
+                        )}
+                      </p>
                     </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                    <div className="flex items-center gap-2 flex-wrap shrink-0">
+                      <Badge
+                        variant="outline"
+                        className={`text-xs border ${statusColors[req.status] ?? ""}`}
+                      >
+                        {statusLabels[req.status] ?? req.status.replace(/_/g, " ")}
+                      </Badge>
+                      <Badge
+                        variant={req.priority === "high" ? "destructive" : req.priority === "medium" ? "default" : "secondary"}
+                        className="text-xs capitalize"
+                      >
+                        {req.priority}
+                      </Badge>
+                      {req.projectName && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 sm:w-24 truncate">
+                          <FolderKanban className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{req.projectName}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

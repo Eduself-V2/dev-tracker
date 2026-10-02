@@ -64,6 +64,20 @@ export function getPresetRange(
   }
 }
 
+/**
+ * Parse a "yyyy-MM-dd" string as the START of that day in the user's local
+ * timezone. `new Date("yyyy-MM-dd")` parses as UTC midnight, which shifts the
+ * range by the user's UTC offset (e.g. 6h in Bangladesh) and drops records.
+ */
+export function startOfLocalDay(date: string): Date {
+  return new Date(`${date}T00:00:00`);
+}
+
+/** Parse a "yyyy-MM-dd" string as the END of that day in local time. */
+export function endOfLocalDay(date: string): Date {
+  return new Date(`${date}T23:59:59.999`);
+}
+
 interface DateRangeFilterProps {
   preset: DateRangePreset;
   onPresetChange: (preset: DateRangePreset) => void;
@@ -74,6 +88,8 @@ interface DateRangeFilterProps {
   allowAllTime?: boolean;
   label?: string;
   className?: string;
+  /** Stretch the preset select and custom inputs to fill the container. */
+  fullWidth?: boolean;
 }
 
 export function DateRangeFilter({
@@ -85,7 +101,10 @@ export function DateRangeFilter({
   allowAllTime = true,
   label,
   className,
+  fullWidth = false,
 }: DateRangeFilterProps) {
+  const triggerWidth = fullWidth ? "w-full flex-1 min-w-0" : "w-full sm:w-[150px]";
+  const inputWidth = fullWidth ? "flex-1 min-w-[8rem]" : "w-full sm:w-[150px]";
   function handlePresetSelect(value: string) {
     const next = value as DateRangePreset;
     onPresetChange(next);
@@ -101,7 +120,7 @@ export function DateRangeFilter({
     <div className={`flex items-center gap-2 flex-wrap ${className ?? ""}`}>
       {label && <span className="text-sm text-muted-foreground shrink-0">{label}</span>}
       <Select value={preset} onValueChange={handlePresetSelect}>
-        <SelectTrigger className="w-full sm:w-[150px] h-9 text-sm">
+        <SelectTrigger className={`${triggerWidth} h-9 text-sm`}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -118,14 +137,14 @@ export function DateRangeFilter({
         <>
           <Input
             type="date"
-            className="text-sm h-9 w-full sm:w-[150px]"
+            className={`text-sm h-9 ${inputWidth}`}
             value={from}
             onChange={(e) => onChange(e.target.value, to)}
           />
           <span className="text-muted-foreground text-xs shrink-0">to</span>
           <Input
             type="date"
-            className="text-sm h-9 w-full sm:w-[150px]"
+            className={`text-sm h-9 ${inputWidth}`}
             value={to}
             onChange={(e) => onChange(from, e.target.value)}
           />

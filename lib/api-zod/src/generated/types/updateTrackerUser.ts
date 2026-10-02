@@ -21,4 +21,5 @@ export interface UpdateTrackerUser {
    */
   password?: string;
   role?: UpdateTrackerUserRole;
+  leaderId?: number | null;
 }
