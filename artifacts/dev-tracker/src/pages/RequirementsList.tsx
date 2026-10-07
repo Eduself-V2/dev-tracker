@@ -22,7 +22,7 @@ import { format } from "date-fns";
 import {
   Search, PlusCircle, AlertCircle, Circle, Clock, CheckCircle2,
   ArrowRightCircle, ListTodo, FolderKanban, User, ArrowUpDown,
-  CalendarDays, Pin,
+  CalendarDays, Pin, SlidersHorizontal, ChevronDown, X,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -32,7 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DateRangeFilter, type DateRangePreset } from "@/components/DateRangeFilter";
+import { DateRangeFilter, startOfLocalDay, endOfLocalDay, type DateRangePreset } from "@/components/DateRangeFilter";
 import {
   Dialog,
   DialogContent,
@@ -78,6 +78,26 @@ function getInitialProjectIds(): number[] {
     .split(",")
     .map((s) => parseInt(s.trim(), 10))
     .filter((n) => !isNaN(n));
+}
+
+function FilterField({
+  label,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 min-w-0">
+      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </span>
+      {children}
+    </div>
+  );
 }
 
 type PinDialogState = {
@@ -188,6 +208,7 @@ export default function RequirementsList() {
   const [updatedFrom, setUpdatedFrom] = useState("");
   const [updatedTo, setUpdatedTo] = useState("");
   const [pinDialog, setPinDialog] = useState<PinDialogState | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const { data: projects } = useTrackerListProjects();
   const { data: allUsers } = useTrackerListUsers();
@@ -213,10 +234,10 @@ export default function RequirementsList() {
       if (priorityFilter !== "all" && r.priority !== priorityFilter) return false;
       const created = new Date(r.createdAt);
       const updated = new Date(r.updatedAt);
-      if (createdFrom && created < new Date(createdFrom)) return false;
-      if (createdTo && created > new Date(createdTo + "T23:59:59")) return false;
-      if (updatedFrom && updated < new Date(updatedFrom)) return false;
-      if (updatedTo && updated > new Date(updatedTo + "T23:59:59")) return false;
+      if (createdFrom && created < startOfLocalDay(createdFrom)) return false;
+      if (createdTo && created > endOfLocalDay(createdTo)) return false;
+      if (updatedFrom && updated < startOfLocalDay(updatedFrom)) return false;
+      if (updatedTo && updated > endOfLocalDay(updatedTo)) return false;
       return true;
     })
     .sort((a, b) => {
@@ -224,6 +245,34 @@ export default function RequirementsList() {
       if (prioritySort === "low_first") return priorityOrder[a.priority] - priorityOrder[b.priority];
       return 0;
     });
+
+  const activeFilterCount = [
+    statusFilter.length > 0,
+    mine,
+    projectIds.length > 0,
+    priorityFilter !== "all",
+    createdBy !== undefined,
+    testedBy !== undefined,
+    assignedTo !== undefined,
+    createdPreset !== "all",
+    updatedPreset !== "all",
+  ].filter(Boolean).length;
+
+  function clearFilters() {
+    setStatusFilter([]);
+    setMine(false);
+    setProjectIds([]);
+    setPriorityFilter("all");
+    setCreatedBy(undefined);
+    setTestedBy(undefined);
+    setAssignedTo(undefined);
+    setCreatedPreset("all");
+    setCreatedFrom("");
+    setCreatedTo("");
+    setUpdatedPreset("all");
+    setUpdatedFrom("");
+    setUpdatedTo("");
+  }
 
   const stageConfigs = [
     { key: 'all', label: 'All', icon: ListTodo },
@@ -259,38 +308,108 @@ export default function RequirementsList() {
 
       <Card className="border-border/50 shadow-sm">
         <CardContent className="p-4 flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 items-start sm:items-center justify-between">
-            <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search requirements..."
-                className="pl-8"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+          {/* Row 1: search, quick toggles, sort */}
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex gap-2 flex-1 min-w-0">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="search"
+                  placeholder="Search requirements..."
+                  className="pl-8"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                variant={showFilters ? "secondary" : "outline"}
+                className="md:hidden shrink-0 h-9"
+                onClick={() => setShowFilters((v) => !v)}
+                aria-expanded={showFilters}
+              >
+                <SlidersHorizontal className="h-4 w-4 mr-1.5" />
+                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              </Button>
             </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch id="mine-only" checked={mine} onCheckedChange={setMine} />
-              <Label htmlFor="mine-only" className="cursor-pointer">
-                {user?.role === "admin" ? "Assigned to me" : "My assignments"}
-              </Label>
+            <div className="flex items-center justify-between md:justify-end gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <Switch id="mine-only" checked={mine} onCheckedChange={setMine} />
+                <Label htmlFor="mine-only" className="cursor-pointer whitespace-nowrap">
+                  {user?.role === "admin" ? "Assigned to me" : "My assignments"}
+                </Label>
+              </div>
+              <div className="flex items-center gap-2 min-w-0">
+                <ArrowUpDown className="h-4 w-4 text-muted-foreground shrink-0 hidden sm:block" />
+                <Select
+                  value={prioritySort}
+                  onValueChange={(val) => setPrioritySort(val as "none" | "high_first" | "low_first")}
+                >
+                  <SelectTrigger className="w-[170px] max-w-full" aria-label="Sort order">
+                    <SelectValue placeholder="Sort by priority" />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="none">Default order</SelectItem>
+                    <SelectItem value="high_first">High priority first</SelectItem>
+                    <SelectItem value="low_first">Low priority first</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+          </div>
 
-            <div className="flex items-center space-x-2 min-w-[200px]">
-              <FolderKanban className="h-4 w-4 text-muted-foreground shrink-0" />
+          {/* Row 2: status chips (single swipeable row on mobile) */}
+          <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 sm:mx-0 sm:px-0 sm:pb-0 sm:flex-wrap [scrollbar-width:none]">
+            {stageConfigs.map((config) => {
+              const isSelected = config.key === "all" ? statusFilter.length === 0 : statusFilter.includes(config.key);
+              return (
+                <button
+                  key={config.key}
+                  type="button"
+                  aria-pressed={isSelected}
+                  className={`inline-flex items-center shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 text-sm font-medium transition-colors touch-manipulation ${
+                    isSelected
+                      ? "border-transparent bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "border-border bg-background text-foreground hover:bg-muted"
+                  }`}
+                  onClick={() => {
+                    if (config.key === "all") {
+                      setStatusFilter([]);
+                      return;
+                    }
+                    setStatusFilter((prev) =>
+                      prev.includes(config.key)
+                        ? prev.filter((s) => s !== config.key)
+                        : [...prev, config.key],
+                    );
+                  }}
+                >
+                  <config.icon className="w-3.5 h-3.5 mr-1.5" />
+                  {config.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Row 3: detailed filters — always visible on desktop, toggled on mobile */}
+          <div
+            className={`${showFilters ? "grid" : "hidden"} md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3 pt-4 border-t border-border/40`}
+          >
+            <FilterField label="Project" icon={FolderKanban}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start font-normal">
-                    {projectIds.length === 0
-                      ? "All projects"
-                      : projectIds.length === 1
-                        ? (Array.isArray(projects) ? projects : []).find((p) => p.id === projectIds[0])?.name ?? "1 project"
-                        : `${projectIds.length} projects`}
+                  <Button variant="outline" className="w-full h-9 justify-between font-normal px-3">
+                    <span className="truncate">
+                      {projectIds.length === 0
+                        ? "All projects"
+                        : projectIds.length === 1
+                          ? (Array.isArray(projects) ? projects : []).find((p) => p.id === projectIds[0])?.name ?? "1 project"
+                          : `${projectIds.length} projects`}
+                    </span>
+                    <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-56">
                   <DropdownMenuCheckboxItem
                     checked={projectIds.length === 0}
                     onCheckedChange={() => setProjectIds([])}
@@ -314,9 +433,9 @@ export default function RequirementsList() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
+            </FilterField>
 
-            <div className="flex items-center space-x-2 min-w-[180px]">
+            <FilterField label="Priority" icon={AlertCircle}>
               <Select
                 value={priorityFilter}
                 onValueChange={(val) => setPriorityFilter(val as "all" | "high" | "medium" | "low")}
@@ -331,124 +450,87 @@ export default function RequirementsList() {
                   <SelectItem value="low">🟢 Low</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </FilterField>
 
-            <div className="flex items-center space-x-2 min-w-[200px]">
-              <ArrowUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
-              <Select
-                value={prioritySort}
-                onValueChange={(val) => setPrioritySort(val as "none" | "high_first" | "low_first")}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sort by priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Default order</SelectItem>
-                  <SelectItem value="high_first">High priority first</SelectItem>
-                  <SelectItem value="low_first">Low priority first</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {stageConfigs.map((config) => {
-              const isSelected = config.key === "all" ? statusFilter.length === 0 : statusFilter.includes(config.key);
-              return (
-                <Badge
-                  key={config.key}
-                  variant={isSelected ? "default" : "outline"}
-                  className={`cursor-pointer px-3 py-1.5 transition-colors text-sm font-medium hover:bg-primary/90 hover:text-primary-foreground ${
-                    !isSelected ? "bg-background text-foreground hover:bg-muted" : ""
-                  }`}
-                  onClick={() => {
-                    if (config.key === "all") {
-                      setStatusFilter([]);
-                      return;
-                    }
-                    setStatusFilter((prev) =>
-                      prev.includes(config.key)
-                        ? prev.filter((s) => s !== config.key)
-                        : [...prev, config.key],
-                    );
-                  }}
-                >
-                  <config.icon className="w-3 h-3 mr-1.5" />
-                  {config.label}
-                </Badge>
-              );
-            })}
-          </div>
-
-          {user?.role === "admin" && (
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 pt-2 border-t border-border/40">
-              <div className="flex items-center gap-2 min-w-[180px]">
-                <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                <Select value={createdBy?.toString() || "all"} onValueChange={(val) => setCreatedBy(val === "all" ? undefined : parseInt(val))}>
-                  <SelectTrigger className="w-full text-sm">
-                    <SelectValue placeholder="Created by anyone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Created by anyone</SelectItem>
-                    {(Array.isArray(allUsers) ? allUsers : []).map((u) => (
-                      <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2 min-w-[180px]">
-                <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                <Select value={testedBy?.toString() || "all"} onValueChange={(val) => setTestedBy(val === "all" ? undefined : parseInt(val))}>
-                  <SelectTrigger className="w-full text-sm">
-                    <SelectValue placeholder="Tested by anyone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tested by anyone</SelectItem>
-                    {(Array.isArray(allUsers) ? allUsers : []).filter((u) => u.role === "tester").map((u) => (
-                      <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2 min-w-[180px]">
-                <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                <Select value={assignedTo?.toString() || "all"} onValueChange={(val) => setAssignedTo(val === "all" ? undefined : parseInt(val))}>
-                  <SelectTrigger className="w-full text-sm">
-                    <SelectValue placeholder="Assigned to anyone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Assigned to anyone</SelectItem>
-                    {(Array.isArray(allUsers) ? allUsers : []).map((u) => (
-                      <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-border/40">
-            <div className="flex items-center gap-2 flex-1">
-              <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+            <FilterField label="Created date" icon={CalendarDays}>
               <DateRangeFilter
-                label="Created"
+                fullWidth
+                className="w-full"
                 preset={createdPreset}
                 onPresetChange={setCreatedPreset}
                 from={createdFrom}
                 to={createdTo}
                 onChange={(from, to) => { setCreatedFrom(from); setCreatedTo(to); }}
               />
-            </div>
-            <div className="flex items-center gap-2 flex-1">
-              <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+            </FilterField>
+
+            <FilterField label="Updated date" icon={CalendarDays}>
               <DateRangeFilter
-                label="Updated"
+                fullWidth
+                className="w-full"
                 preset={updatedPreset}
                 onPresetChange={setUpdatedPreset}
                 from={updatedFrom}
                 to={updatedTo}
                 onChange={(from, to) => { setUpdatedFrom(from); setUpdatedTo(to); }}
               />
+            </FilterField>
+
+            {user?.role === "admin" && (
+              <>
+                <FilterField label="Created by" icon={User}>
+                  <Select value={createdBy?.toString() || "all"} onValueChange={(val) => setCreatedBy(val === "all" ? undefined : parseInt(val))}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Anyone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Anyone</SelectItem>
+                      {(Array.isArray(allUsers) ? allUsers : []).map((u) => (
+                        <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+                <FilterField label="Tested by" icon={User}>
+                  <Select value={testedBy?.toString() || "all"} onValueChange={(val) => setTestedBy(val === "all" ? undefined : parseInt(val))}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Anyone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Anyone</SelectItem>
+                      {(Array.isArray(allUsers) ? allUsers : []).filter((u) => u.role === "tester").map((u) => (
+                        <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+                <FilterField label="Assigned to" icon={User}>
+                  <Select value={assignedTo?.toString() || "all"} onValueChange={(val) => setAssignedTo(val === "all" ? undefined : parseInt(val))}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Anyone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Anyone</SelectItem>
+                      {(Array.isArray(allUsers) ? allUsers : []).map((u) => (
+                        <SelectItem key={u.id} value={u.id.toString()}>{u.name} ({u.role})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+              </>
+            )}
+
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full h-9 text-muted-foreground"
+                onClick={clearFilters}
+                disabled={activeFilterCount === 0}
+              >
+                <X className="h-4 w-4 mr-1.5" />
+                Clear filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              </Button>
             </div>
           </div>
         </CardContent>

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { DateRangeFilter, getPresetRange, type DateRangePreset } from "@/components/DateRangeFilter";
+import { DateRangeFilter, getPresetRange, startOfLocalDay, endOfLocalDay, type DateRangePreset } from "@/components/DateRangeFilter";
 import {
   BarChart,
   Bar,
@@ -104,7 +104,12 @@ export default function Reports() {
   const { data: report, isLoading, isError } = useQuery<UserReport[]>({
     queryKey: ["/api/tracker/stats/report", userId, startDate, endDate],
     queryFn: async () => {
-      const params = new URLSearchParams({ startDate, endDate });
+      // Send exact local-day boundaries as ISO instants so the server filters
+      // by the user's calendar day, not the server's UTC day.
+      const params = new URLSearchParams({
+        startDate: startOfLocalDay(startDate).toISOString(),
+        endDate: endOfLocalDay(endDate).toISOString(),
+      });
       if (userId) params.set("userId", String(userId));
       const res = await fetch(`/api/tracker/stats/report?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load report");
@@ -222,7 +227,7 @@ export default function Reports() {
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">{singleUser.userName}</h2>
             <Badge variant="outline">
-              {format(new Date(startDate), "MMM d")} – {format(new Date(endDate), "MMM d, yyyy")}
+              {format(startOfLocalDay(startDate), "MMM d")} – {format(startOfLocalDay(endDate), "MMM d, yyyy")}
             </Badge>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -264,7 +269,7 @@ export default function Reports() {
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">All Users</h2>
             <Badge variant="outline">
-              {format(new Date(startDate), "MMM d")} – {format(new Date(endDate), "MMM d, yyyy")}
+              {format(startOfLocalDay(startDate), "MMM d")} – {format(startOfLocalDay(endDate), "MMM d, yyyy")}
             </Badge>
           </div>
 

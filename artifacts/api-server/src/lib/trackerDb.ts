@@ -24,6 +24,7 @@ export interface UserRow {
   role: TrackerRole;
   created_at: Date;
   password_reset_required: number;
+  leader_id: number | null;
 }
 
 export interface ProjectRow {

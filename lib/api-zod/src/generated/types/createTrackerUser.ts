@@ -26,4 +26,5 @@ export interface CreateTrackerUser {
    */
   password: string;
   role: CreateTrackerUserRole;
+  leaderId?: number | null;
 }

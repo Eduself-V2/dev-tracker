@@ -16,4 +16,5 @@ export interface TrackerUser {
   role: TrackerUserRole;
   createdAt: Date;
   passwordResetRequired: boolean;
+  leaderId?: number | null;
 }
