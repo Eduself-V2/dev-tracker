@@ -20,6 +20,7 @@ import Users from "@/pages/Users";
 import Projects from "@/pages/Projects";
 import Reports from "@/pages/Reports";
 import References from "@/pages/References";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -50,9 +51,15 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <AuthProvider>
-              <Router />
-            </AuthProvider>
+            <Switch>
+              {/* Public pages render outside AuthProvider so they never redirect to login */}
+              <Route path="/privacy-policy" component={PrivacyPolicy} />
+              <Route>
+                <AuthProvider>
+                  <Router />
+                </AuthProvider>
+              </Route>
+            </Switch>
           </WouterRouter>
           <Toaster />
         </TooltipProvider>
