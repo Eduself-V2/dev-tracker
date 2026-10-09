@@ -5,8 +5,27 @@ import session from "express-session";
 import { loadTrackerUser } from "./middlewares/requireTrackerAuth";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { MySqlSessionStore } from "./lib/sessionStore";
+
+const sessionSecret = process.env.SESSION_SECRET;
+
+if (!sessionSecret) {
+  throw new Error(
+    "SESSION_SECRET environment variable is required but was not provided.",
+  );
+}
+
+if (sessionSecret.length < 32) {
+  logger.warn(
+    "SESSION_SECRET is shorter than 32 characters; use a long random value in production.",
+  );
+}
 
 const app: Express = express();
+
+// Behind a reverse proxy (nginx, load balancer), trust X-Forwarded-Proto so
+// req.secure reflects the client's HTTPS connection for the session cookie.
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -35,13 +54,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
     name: "tracker.sid",
-    secret: process.env.SESSION_SECRET ?? "dev-tracker-insecure-default",
+    secret: sessionSecret,
+    store: new MySqlSessionStore(),
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      // Secure-only over HTTPS, still works over plain HTTP (local dev).
+      secure: "auto",
       maxAge: 1000 * 60 * 60 * 24 * 14,
     },
   }),

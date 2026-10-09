@@ -179,3 +179,11 @@ CREATE TABLE requirement_attachments (
   CONSTRAINT fk_att_comment FOREIGN KEY (comment_id) REFERENCES requirement_comments (id) ON DELETE CASCADE,
   CONSTRAINT fk_att_user FOREIGN KEY (uploaded_by) REFERENCES users (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE sessions (
+  sid varchar(128) NOT NULL,
+  expires int unsigned NOT NULL,
+  data mediumtext NOT NULL,
+  PRIMARY KEY (sid),
+  KEY idx_sessions_expires (expires)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

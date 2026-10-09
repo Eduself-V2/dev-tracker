@@ -12,6 +12,13 @@ export const trackerPool = mysql.createPool({
   decimalNumbers: true,
 });
 
+// TIMESTAMP columns are stored in UTC but returned in the session time zone,
+// which defaults to the MySQL server's (e.g. +06:00). The pool reads values
+// as UTC (timezone "Z"), so pin every session to UTC to match.
+trackerPool.on("connection", (conn) => {
+  conn.query("SET time_zone = '+00:00'");
+});
+
 export type TrackerRole = "admin" | "manager" | "developer" | "tester";
 
 export interface UserRow {
