@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LogoMark } from "@/components/Logo";
 import {
   Sheet,
   SheetClose,
@@ -20,7 +21,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Activity, LayoutDashboard, ListTodo, PlusCircle, Users, FolderKanban, BarChart2, Moon, Sun, BookOpen, Menu } from "lucide-react";
+import { LayoutDashboard, ListTodo, PlusCircle, Users, FolderKanban, BarChart2, Moon, Sun, BookOpen, Menu } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/lib/theme";
 import { useState } from "react";
@@ -64,7 +65,7 @@ export function Navbar() {
       <div className="container flex h-14 items-center max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex items-center md:mr-4">
           <Link href="/" className="mr-4 md:mr-6 flex items-center space-x-2">
-            <Activity className="h-6 w-6 text-primary shrink-0" />
+            <LogoMark className="h-8 w-8" />
             <span className="font-bold hidden sm:inline-block">Dev Tracker</span>
           </Link>
           <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
@@ -124,7 +125,7 @@ export function Navbar() {
               <SheetContent side="left" className="w-72 p-0">
                 <SheetHeader className="border-b p-4 text-left">
                   <SheetTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-primary" />
+                    <LogoMark className="h-7 w-7" />
                     Dev Tracker
                   </SheetTitle>
                 </SheetHeader>

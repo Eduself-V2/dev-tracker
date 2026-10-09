@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { LogoMark } from "@/components/Logo";
 
 // Update these before publishing.
 const APP_NAME = "Dev Tracker";
@@ -20,6 +21,10 @@ export default function PrivacyPolicy() {
     <div className="min-h-[100dvh] bg-background">
       <main className="max-w-3xl mx-auto px-4 py-10 md:py-16 space-y-10">
         <header className="space-y-2">
+          <div className="flex items-center gap-2 pb-4">
+            <LogoMark className="h-9 w-9" />
+            <span className="text-lg font-bold">{APP_NAME}</span>
+          </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
           <p className="text-sm text-muted-foreground">Last updated: {LAST_UPDATED}</p>
           <p className="text-muted-foreground leading-relaxed">
