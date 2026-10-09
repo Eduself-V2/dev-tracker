@@ -111,7 +111,6 @@ The frontend will be served on the port Vite prints (usually `5173`). Open that 
 artifacts/
   api-server/       # Express API (port from PORT env var)
   dev-tracker/      # React Vite frontend
-  mockup-sandbox/   # Component preview sandbox
 lib/
   api-client-react/ # Generated React Query hooks
   api-spec/         # OpenAPI spec + Orval codegen
