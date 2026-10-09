@@ -42,7 +42,7 @@ router.get("/summary", async (req, res, next) => {
     // reflects reassignment, and not testers). This matches the "Assigned to
     // me" filter on the Requirements list.
     const assignedFilter =
-      "EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = id AND ra_s.user_id = ?) AND ";
+      "EXISTS (SELECT 1 FROM requirement_assignees ra_s WHERE ra_s.requirement_id = requirements.id AND ra_s.user_id = ?) AND ";
     const assignedValues = [me.id, ...projectValues];
     const [myOpenRows] = await trackerPool.query(
       `SELECT COUNT(*) AS c FROM requirements WHERE ${assignedFilter}${projectFilter}status NOT IN ('pushed_to_production')`,
